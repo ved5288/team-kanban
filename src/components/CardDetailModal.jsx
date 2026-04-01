@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { USERS } from '../data/users'
-import { getUserColor, getUserInitials, getUserName } from '../data/users'
+import { USERS, getUserColor, getUserInitials, getUserName } from '../data/users'
 
 // ─── Column accent colours (mirrors Column.jsx) ───────────────────────────────
 
