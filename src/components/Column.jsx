@@ -48,11 +48,12 @@ function getDropIndex(listEl, mouseY) {
  *  filteredCardIds - array of card IDs that passed active filters (subset of column.cardIds)
  *  isFiltering     - boolean: true when any filter is active
  *  onAddCard       - (columnId) => void   opens the AddCard modal for this column
+ *  onViewCard      - (cardId)   => void   opens the card detail popup
  *  onDeleteCard    - (cardId)   => void   deletes a card
  *  onMoveCard      - (cardId, targetColumnId, targetIndex) => void   moves a card
  *  onDeleteLane    - (columnId) => void   deletes the lane (undefined for default lanes)
  */
-export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onDeleteCard, onMoveCard, onDeleteLane }) {
+export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onViewCard, onDeleteCard, onMoveCard, onDeleteLane }) {
   const { id, title, cardIds } = column
   // Use filtered IDs when provided, fall back to all IDs for backward compatibility
   const columnCards = (filteredCardIds ?? cardIds).map((cid) => cards[cid]).filter(Boolean)
@@ -189,7 +190,7 @@ export default function Column({ column, cards, filteredCardIds, isFiltering, on
                 )}
                 <Card
                   card={card}
-                  onDelete={onDeleteCard}
+                  onView={onViewCard}
                 />
               </div>
             ))}

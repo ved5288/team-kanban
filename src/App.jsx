@@ -52,7 +52,7 @@ export default function App() {
             element={user ? <Board /> : <Navigate to="/login" replace />}
           />
 
-          {/* /card/:id → full card detail page (protected) */}
+          {/* /card/:id → full card detail page, opened in a new window from the popup */}
           <Route
             path="/card/:id"
             element={user ? <CardDetail /> : <Navigate to="/login" replace />}

@@ -1,5 +1,4 @@
-import { useState, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 import { timeAgo } from '../utils/time'
 
@@ -18,32 +17,20 @@ const PRIORITY_STYLES = {
  *
  * Props:
  *  card      - the card data object { id, title, description, priority, assignee, createdAt, color }
- *  onDelete  - (cardId) => void   called when the user deletes the card
+ *  onView    - (cardId) => void   called when the user clicks the card title or edit button
  */
-export default function Card({ card, onDelete }) {
+export default function Card({ card, onView }) {
   const { id, title, description, priority, assignee, createdAt, color } = card
-  const navigate = useNavigate()
   const [isDragging, setIsDragging] = useState(false)
-  const wasDragged = useRef(false)
 
   const handleDragStart = (e) => {
     e.dataTransfer.setData('text/plain', id)
     e.dataTransfer.effectAllowed = 'move'
     setIsDragging(true)
-    wasDragged.current = true
   }
 
   const handleDragEnd = () => {
     setIsDragging(false)
-    // Reset the flag after a tick so the click handler can check it
-    requestAnimationFrame(() => { wasDragged.current = false })
-  }
-
-  const handleLinkClick = (e) => {
-    // Prevent navigation if the user just finished dragging
-    if (wasDragged.current) {
-      e.preventDefault()
-    }
   }
 
   return (
@@ -59,16 +46,14 @@ export default function Card({ card, onDelete }) {
       {color && <div className={`h-1 w-full ${color}`} />}
 
       <div className="p-3">
-        {/* Title — click to open the full card detail page */}
-        <Link
-          to={`/card/${id}`}
-          onClick={handleLinkClick}
-          draggable={false}
-          className="block text-sm font-semibold text-gray-800 leading-snug mb-2
+        {/* Title — click to open the card detail popup */}
+        <button
+          onClick={() => onView(id)}
+          className="block w-full text-left text-sm font-semibold text-gray-800 leading-snug mb-2
                      hover:text-indigo-600 transition-colors"
         >
           {title}
-        </Link>
+        </button>
 
         {/* Description (truncated) */}
         {description && (
@@ -90,7 +75,7 @@ export default function Card({ card, onDelete }) {
             {/* Edit button — visible on card hover */}
             <div className="relative">
               <button
-                onClick={() => navigate(`/card/${id}`, { state: { editing: true } })}
+                onClick={() => onView(id)}
                 className="peer opacity-0 group-hover:opacity-100 transition-opacity
                            border border-gray-300 hover:border-indigo-400
                            text-gray-400 hover:text-indigo-600
