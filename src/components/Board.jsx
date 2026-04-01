@@ -86,38 +86,51 @@ export default function Board() {
       const targetColumn = prev.columns[targetColumnId]
       if (!sourceColumn || !targetColumn) return prev
 
-      // Remove card from source column
       const sourceIndex = sourceColumn.cardIds.indexOf(cardId)
-      const sourceCardIds = sourceColumn.cardIds.filter((id) => id !== cardId)
 
-      let targetCardIds
       if (sourceColumnId === targetColumnId) {
-        targetCardIds = [...sourceCardIds]
+        // Same column reorder
         // Adjust for the removed card: DOM still shows N elements when index was
         // calculated, but the filtered list has N-1. If dragging downward, decrement.
         let adjustedIndex = targetIndex
         if (targetIndex > sourceIndex) {
           adjustedIndex = targetIndex - 1
         }
-        const clampedIndex = Math.min(adjustedIndex, targetCardIds.length)
-        targetCardIds.splice(clampedIndex, 0, cardId)
+        const clampedIndex = Math.min(adjustedIndex, sourceColumn.cardIds.length - 1)
+
+        // Bail out if the card didn't actually move
+        if (clampedIndex === sourceIndex) return prev
+
+        const reorderedIds = [...sourceColumn.cardIds]
+        reorderedIds.splice(sourceIndex, 1)
+        reorderedIds.splice(clampedIndex, 0, cardId)
+
+        return {
+          ...prev,
+          columns: {
+            ...prev.columns,
+            [sourceColumnId]: { ...sourceColumn, cardIds: reorderedIds },
+          },
+        }
       } else {
-        targetCardIds = [...targetColumn.cardIds]
+        // Cross-column move
+        const sourceCardIds = sourceColumn.cardIds.filter((id) => id !== cardId)
+        const targetCardIds = [...targetColumn.cardIds]
         const clampedIndex = Math.min(targetIndex, targetCardIds.length)
         targetCardIds.splice(clampedIndex, 0, cardId)
-      }
 
-      const updatedColumns = { ...prev.columns }
-      updatedColumns[sourceColumnId] = { ...sourceColumn, cardIds: sourceCardIds }
-      updatedColumns[targetColumnId] = { ...targetColumn, cardIds: targetCardIds }
-
-      return {
-        ...prev,
-        cards: {
-          ...prev.cards,
-          [cardId]: { ...card, columnId: targetColumnId },
-        },
-        columns: updatedColumns,
+        return {
+          ...prev,
+          cards: {
+            ...prev.cards,
+            [cardId]: { ...card, columnId: targetColumnId },
+          },
+          columns: {
+            ...prev.columns,
+            [sourceColumnId]: { ...sourceColumn, cardIds: sourceCardIds },
+            [targetColumnId]: { ...targetColumn, cardIds: targetCardIds },
+          },
+        }
       }
     })
   }

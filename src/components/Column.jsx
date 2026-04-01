@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import Card from './Card'
 
 // Column accent colours (header bar at the top)
@@ -42,36 +42,79 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onMoveC
 
   // Track where the drop indicator should appear: index in the card list
   const [dropIndex, setDropIndex] = useState(null)
+  // Track whether something is being dragged over this column
+  const [isDragOver, setIsDragOver] = useState(false)
+  // Cache the last drop index to avoid redundant re-renders
+  const lastDropIndexRef = useRef(null)
 
-  const handleDragOverList = (e) => {
+  const handleDragOverList = useCallback((e) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    setDropIndex(getDropIndex(e.currentTarget, e.clientY))
-  }
+    const index = getDropIndex(e.currentTarget, e.clientY)
+    // Only update state if the index actually changed
+    if (lastDropIndexRef.current !== index) {
+      lastDropIndexRef.current = index
+      setDropIndex(index)
+    }
+  }, [])
 
-  const handleDragEnter = (e) => {
+  const handleDragEnter = useCallback((e) => {
     e.preventDefault()
-  }
+    setIsDragOver(true)
+  }, [])
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = useCallback((e) => {
     // Only reset if we actually left the column (not just moved between children)
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setDropIndex(null)
+      setIsDragOver(false)
+      lastDropIndexRef.current = null
     }
-  }
+  }, [])
 
-  const handleDrop = (e) => {
+  const handleDrop = useCallback((e) => {
     e.preventDefault()
     const cardId = e.dataTransfer.getData('text/plain')
-    if (!cardId) return
+
+    // Validate: only process drops of actual cards from this app
+    if (!cardId || !cards[cardId]) {
+      setDropIndex(null)
+      setIsDragOver(false)
+      lastDropIndexRef.current = null
+      return
+    }
 
     const targetIndex = getDropIndex(e.currentTarget, e.clientY)
     onMoveCard(cardId, id, targetIndex)
     setDropIndex(null)
+    setIsDragOver(false)
+    lastDropIndexRef.current = null
+  }, [cards, id, onMoveCard])
+
+  // Find the index of the card currently being dragged (if it's in this column)
+  // so we can suppress the indicator at its own position
+  const getDraggedCardIndex = () => {
+    if (dropIndex === null) return -1
+    // We can't read the card ID during dragover (browser restriction),
+    // so we detect it by checking which card has opacity-40 (isDragging state)
+    const draggedEl = document.querySelector('[class*="opacity-40"][draggable="true"]')
+    if (!draggedEl) return -1
+    const wrapper = draggedEl.closest('[data-card-id]')
+    if (!wrapper) return -1
+    const draggedId = wrapper.getAttribute('data-card-id')
+    return cardIds.indexOf(draggedId)
   }
 
+  const draggedCardIndex = getDraggedCardIndex()
+  // Suppress indicator if it would result in no visual change
+  const effectiveDropIndex = (draggedCardIndex >= 0 &&
+    (dropIndex === draggedCardIndex || dropIndex === draggedCardIndex + 1))
+    ? null
+    : dropIndex
+
   return (
-    <div className="flex flex-col w-72 shrink-0 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+    <div className={`flex flex-col w-72 shrink-0 rounded-xl overflow-hidden border transition-colors
+                     ${isDragOver ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-100 border-gray-200'}`}>
 
       {/* Column header */}
       <div className={`${accentColor} px-4 py-2`}>
@@ -91,11 +134,11 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onMoveC
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {columnCards.length === 0 && dropIndex === null ? (
+        {columnCards.length === 0 && effectiveDropIndex === null ? (
           <div className="flex items-center justify-center h-16 text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
             No cards yet
           </div>
-        ) : columnCards.length === 0 && dropIndex !== null ? (
+        ) : columnCards.length === 0 && effectiveDropIndex !== null ? (
           <div className="flex items-center justify-center h-16 text-xs text-indigo-500 border-2 border-dashed border-indigo-300 rounded-lg bg-indigo-50">
             Drop here
           </div>
@@ -103,7 +146,7 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onMoveC
           <>
             {columnCards.map((card, index) => (
               <div key={card.id} data-card-id={card.id}>
-                {dropIndex === index && (
+                {effectiveDropIndex === index && (
                   <div className="h-1 bg-indigo-500 rounded-full mb-2 mx-1" />
                 )}
                 <Card
@@ -114,7 +157,7 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onMoveC
             ))}
 
             {/* Drop indicator at the end of the list */}
-            {dropIndex !== null && dropIndex >= columnCards.length && (
+            {effectiveDropIndex !== null && effectiveDropIndex >= columnCards.length && (
               <div className="h-1 bg-indigo-500 rounded-full mx-1" />
             )}
           </>
