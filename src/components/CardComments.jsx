@@ -1,23 +1,46 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../App'
-import { USERS, getUserName, getUserInitials, getUserColor } from '../data/users'
+import { USERS, getUserName } from '../data/users'
+import Avatar from './Avatar'
+import { timeAgo } from '../utils/time'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EMOJI_LIST = ['👍', '👎', '❤️', '😂', '😮', '🎉', '🚀', '👀']
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
 
-function timeAgo(isoString) {
-  const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
-  if (seconds < 60)         return 'just now'
-  if (seconds < 3600)       return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400)      return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 86400 * 30) return `${Math.floor(seconds / 86400)}d ago`
-  return new Date(isoString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+// Splices @username into text at the given cursor position, replacing any
+// partial @mention that was already being typed.
+function spliceUsername(text, cursor, username) {
+  return (
+    text.slice(0, cursor).replace(/@\w*$/, '') +
+    '@' + username + ' ' +
+    text.slice(cursor)
+  )
 }
 
-// Renders comment text with highlighted @mentions
+// Extracts the in-progress @mention query from text up to the cursor.
+// Returns null when the cursor is not inside a @mention.
+function getMentionQuery(value, cursorPos) {
+  const match = value.slice(0, cursorPos).match(/@(\w*)$/)
+  return match ? match[1] : null
+}
+
+// Shallow board update — avoids repeating the nested spread pattern.
+function updateCard(board, cardId, updater) {
+  return {
+    ...board,
+    cards: {
+      ...board.cards,
+      [cardId]: updater(board.cards[cardId]),
+    },
+  }
+}
+
+// ─── RenderText ───────────────────────────────────────────────────────────────
+
+// Renders comment text with highlighted @mentions.
 function RenderText({ text }) {
   const parts = text.split(/(@\w+)/g)
   return (
@@ -28,15 +51,6 @@ function RenderText({ text }) {
           : <span key={i}>{part}</span>
       )}
     </>
-  )
-}
-
-function Avatar({ userId, size = 'sm' }) {
-  const cls = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-9 h-9 text-sm'
-  return (
-    <div className={`${cls} ${getUserColor(userId)} rounded-full flex items-center justify-center text-white font-bold shrink-0`}>
-      {getUserInitials(userId)}
-    </div>
   )
 }
 
@@ -58,10 +72,12 @@ function MentionDropdown({ query, onSelect }) {
         <button
           key={u.id}
           type="button"
+          // onMouseDown + preventDefault keeps the textarea focused so the
+          // cursor position remains accurate when we read it after selection.
           onMouseDown={e => { e.preventDefault(); onSelect(u.id) }}
           className="w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-50 text-left transition-colors"
         >
-          <Avatar userId={u.id} size="sm" />
+          <Avatar userId={u.id} />
           <div>
             <p className="text-sm font-medium text-gray-800">{u.name}</p>
             <p className="text-xs text-gray-400">@{u.id}</p>
@@ -72,68 +88,100 @@ function MentionDropdown({ query, onSelect }) {
   )
 }
 
-// ─── EmojiPicker ─────────────────────────────────────────────────────────────
+// ─── EmojiPickerButton ────────────────────────────────────────────────────────
+// Self-contained: owns open/close state and outside-click handling.
 
-function EmojiPicker({ onSelect }) {
+function EmojiPickerButton({ onAddReaction }) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
   return (
-    <div className="absolute z-20 bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex gap-1">
-      {EMOJI_LIST.map(emoji => (
-        <button
-          key={emoji}
-          type="button"
-          onMouseDown={e => { e.preventDefault(); onSelect(emoji) }}
-          className="text-lg hover:bg-gray-100 rounded p-0.5 transition-colors"
-          title={emoji}
-        >
-          {emoji}
-        </button>
-      ))}
+    <div ref={wrapperRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors"
+        title="Add reaction"
+      >
+        😊 +
+      </button>
+      {open && (
+        <div className="absolute z-20 bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex gap-1">
+          {EMOJI_LIST.map(emoji => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => { onAddReaction(emoji); setOpen(false) }}
+              className="text-lg hover:bg-gray-100 rounded p-0.5 transition-colors"
+              title={emoji}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── CommentForm ──────────────────────────────────────────────────────────────
+// ─── EditCommentForm ──────────────────────────────────────────────────────────
+// Owns its own text state and cursor ref; calls onSave(trimmedText) or onCancel.
 
-function CommentForm({ user, text, textareaRef, mentionQuery, onTextChange, onInsertMention, onSubmit, onCancel }) {
+function EditCommentForm({ initialText, onSave, onCancel }) {
+  const [text, setText] = useState(initialText)
+  const [mentionQuery, setMentionQuery] = useState(null)
+  const cursorRef = useRef(0)
+
+  function handleChange(e) {
+    // Store cursor before React re-renders so insertMention reads the right position.
+    cursorRef.current = e.target.selectionStart
+    setText(e.target.value)
+    setMentionQuery(getMentionQuery(e.target.value, e.target.selectionStart))
+  }
+
+  function insertMention(username) {
+    const newVal = spliceUsername(text, cursorRef.current, username)
+    setText(newVal)
+    setMentionQuery(null)
+  }
+
   return (
-    <div className="space-y-3">
-      {/* Author header */}
-      <div className="flex items-center gap-2">
-        <Avatar userId={user.id} size="sm" />
-        <span className="text-sm font-semibold text-gray-800">{getUserName(user.id)}</span>
-        <span className="text-xs text-gray-400">@{user.id}</span>
-      </div>
-
-      {/* Textarea + mention dropdown */}
+    <div className="space-y-2">
       <div className="relative">
         <textarea
-          ref={textareaRef}
           value={text}
-          onChange={onTextChange}
-          placeholder="Write a comment… Use @ to mention someone"
+          onChange={handleChange}
           rows={3}
           className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none
-                     focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent
-                     placeholder-gray-400"
+                     focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
         />
-        <MentionDropdown query={mentionQuery} onSelect={onInsertMention} />
+        <MentionDropdown query={mentionQuery} onSelect={insertMention} />
       </div>
-
-      {/* Actions */}
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={onSubmit}
+          onClick={() => onSave(text.trim())}
           disabled={!text.trim()}
-          className="text-sm px-4 py-1.5 bg-indigo-600 text-white rounded-lg font-medium
-                     hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="text-xs px-3 py-1 bg-indigo-600 text-white rounded font-medium
+                     hover:bg-indigo-700 disabled:opacity-40 transition-colors"
         >
           Save
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="text-sm px-4 py-1.5 text-gray-600 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+          className="text-xs px-3 py-1 text-gray-600 rounded font-medium hover:bg-gray-100 transition-colors"
         >
           Cancel
         </button>
@@ -143,32 +191,19 @@ function CommentForm({ user, text, textareaRef, mentionQuery, onTextChange, onIn
 }
 
 // ─── CommentItem ──────────────────────────────────────────────────────────────
+// Edit and delete-confirmation state live here; parent only needs 5 props.
 
-function CommentItem({
-  comment,
-  currentUser,
-  isEditing,
-  editText,
-  editMentionQuery,
-  editTextareaRef,
-  showEmojiPicker,
-  onStartEdit,
-  onCancelEdit,
-  onSaveEdit,
-  onEditTextChange,
-  onInsertMention,
-  onDelete,
-  onToggleEmojiPicker,
-  onAddReaction,
-}) {
+function CommentItem({ comment, currentUser, onSave, onDelete, onAddReaction }) {
+  const [isEditing, setIsEditing]       = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const isOwn = comment.authorId === currentUser.id
 
   return (
     <div className="flex gap-3">
-      <Avatar userId={comment.authorId} size="sm" />
+      <Avatar userId={comment.authorId} />
 
       <div className="flex-1 min-w-0">
-        {/* Header: name + timestamp + edited marker */}
+        {/* Header */}
         <div className="flex items-baseline gap-2 mb-1">
           <span className="text-sm font-semibold text-gray-800">{getUserName(comment.authorId)}</span>
           <span
@@ -182,46 +217,20 @@ function CommentItem({
           )}
         </div>
 
-        {/* Body: view or edit mode */}
+        {/* Body — view or edit mode */}
         {isEditing ? (
-          <div className="space-y-2">
-            <div className="relative">
-              <textarea
-                ref={editTextareaRef}
-                value={editText}
-                onChange={onEditTextChange}
-                rows={3}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none
-                           focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
-              />
-              <MentionDropdown query={editMentionQuery} onSelect={onInsertMention} />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onSaveEdit}
-                disabled={!editText.trim()}
-                className="text-xs px-3 py-1 bg-indigo-600 text-white rounded font-medium
-                           hover:bg-indigo-700 disabled:opacity-40 transition-colors"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={onCancelEdit}
-                className="text-xs px-3 py-1 text-gray-600 rounded font-medium hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          <EditCommentForm
+            initialText={comment.text}
+            onSave={text => { onSave(comment.id, text); setIsEditing(false) }}
+            onCancel={() => setIsEditing(false)}
+          />
         ) : (
           <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
             <RenderText text={comment.text} />
           </p>
         )}
 
-        {/* Reactions + action row */}
+        {/* Reactions + actions row */}
         {!isEditing && (
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {/* Existing reactions */}
@@ -241,18 +250,7 @@ function CommentItem({
               </button>
             ))}
 
-            {/* Add reaction button */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={onToggleEmojiPicker}
-                className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors"
-                title="Add reaction"
-              >
-                😊 +
-              </button>
-              {showEmojiPicker && <EmojiPicker onSelect={onAddReaction} />}
-            </div>
+            <EmojiPickerButton onAddReaction={onAddReaction} />
 
             {/* Edit / Delete — own comments only */}
             {isOwn && (
@@ -260,18 +258,38 @@ function CommentItem({
                 <span className="text-gray-200 text-xs select-none">·</span>
                 <button
                   type="button"
-                  onClick={onStartEdit}
+                  onClick={() => setIsEditing(true)}
                   className="text-xs text-gray-400 hover:text-indigo-600 transition-colors"
                 >
                   Edit
                 </button>
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  className="text-xs text-gray-400 hover:text-red-600 transition-colors"
-                >
-                  Delete
-                </button>
+                {confirmDelete ? (
+                  <>
+                    <span className="text-xs text-gray-500">Delete?</span>
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className="text-xs text-red-600 font-medium hover:text-red-800 transition-colors"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      No
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="text-xs text-gray-400 hover:text-red-600 transition-colors"
+                  >
+                    Delete
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -281,150 +299,146 @@ function CommentItem({
   )
 }
 
-// ─── CardComments (main export) ───────────────────────────────────────────────
+// ─── CommentForm ──────────────────────────────────────────────────────────────
+// New-comment form — owns its own text state and cursor ref.
 
-export default function CardComments({ cardId, board, setBoard }) {
-  const { user } = useAuth()
+function CommentForm({ user, onSubmit, onCancel }) {
+  const [text, setText]               = useState('')
+  const [mentionQuery, setMentionQuery] = useState(null)
+  const cursorRef = useRef(0)
 
-  const [showForm, setShowForm]           = useState(false)
-  const [text, setText]                   = useState('')
-  const [mentionQuery, setMentionQuery]   = useState(null)
-
-  const [editingId, setEditingId]             = useState(null)
-  const [editText, setEditText]               = useState('')
-  const [editMentionQuery, setEditMentionQuery] = useState(null)
-
-  const [showEmojiFor, setShowEmojiFor] = useState(null)
-
-  const textareaRef     = useRef(null)
-  const editTextareaRef = useRef(null)
-
-  const comments = board.cards[cardId]?.comments ?? []
-
-  // Close emoji picker on outside click
-  useEffect(() => {
-    if (!showEmojiFor) return
-    function handler(e) {
-      setShowEmojiFor(null)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showEmojiFor])
-
-  // ── @mention helpers ────────────────────────────────────────────────────────
-
-  function getMentionQuery(value, cursorPos) {
-    const match = value.slice(0, cursorPos).match(/@(\w*)$/)
-    return match ? match[1] : null
-  }
-
-  function handleTextChange(e) {
+  function handleChange(e) {
+    cursorRef.current = e.target.selectionStart
     setText(e.target.value)
     setMentionQuery(getMentionQuery(e.target.value, e.target.selectionStart))
   }
 
-  function handleEditTextChange(e) {
-    setEditText(e.target.value)
-    setEditMentionQuery(getMentionQuery(e.target.value, e.target.selectionStart))
-  }
-
-  function insertMention(username, isEdit) {
-    const ref = isEdit ? editTextareaRef : textareaRef
-    const val = isEdit ? editText : text
-    const cursor = ref.current.selectionStart
-    const newVal = val.slice(0, cursor).replace(/@\w*$/, '') + '@' + username + ' ' + val.slice(cursor)
-    if (isEdit) { setEditText(newVal); setEditMentionQuery(null) }
-    else        { setText(newVal);     setMentionQuery(null)     }
-  }
-
-  // ── CRUD ────────────────────────────────────────────────────────────────────
-
-  function addComment() {
-    if (!text.trim()) return
-    const comment = {
-      id:        `c-${Date.now()}`,
-      authorId:  user.id,
-      text:      text.trim(),
-      createdAt: new Date().toISOString(),
-      editedAt:  null,
-      reactions: {},
-    }
-    setBoard(b => ({
-      ...b,
-      cards: {
-        ...b.cards,
-        [cardId]: {
-          ...b.cards[cardId],
-          comments: [...(b.cards[cardId].comments ?? []), comment],
-        },
-      },
-    }))
-    setText('')
-    setShowForm(false)
+  function insertMention(username) {
+    const newVal = spliceUsername(text, cursorRef.current, username)
+    setText(newVal)
     setMentionQuery(null)
   }
 
-  function saveEdit(commentId) {
-    if (!editText.trim()) return
-    setBoard(b => ({
-      ...b,
-      cards: {
-        ...b.cards,
-        [cardId]: {
-          ...b.cards[cardId],
-          comments: b.cards[cardId].comments.map(c =>
-            c.id === commentId
-              ? { ...c, text: editText.trim(), editedAt: new Date().toISOString() }
-              : c
-          ),
-        },
-      },
-    }))
-    setEditingId(null)
-    setEditMentionQuery(null)
+  function handleSubmit() {
+    if (!text.trim()) return
+    onSubmit(text.trim())
+    setText('')
+    setMentionQuery(null)
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Author header */}
+      <div className="flex items-center gap-2">
+        <Avatar userId={user.id} />
+        <span className="text-sm font-semibold text-gray-800">{getUserName(user.id)}</span>
+        <span className="text-xs text-gray-400">@{user.id}</span>
+      </div>
+
+      {/* Textarea */}
+      <div className="relative">
+        <textarea
+          value={text}
+          onChange={handleChange}
+          placeholder="Write a comment… Use @ to mention someone"
+          rows={3}
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none
+                     focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent
+                     placeholder-gray-400"
+        />
+        <MentionDropdown query={mentionQuery} onSelect={insertMention} />
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!text.trim()}
+          className="text-sm px-4 py-1.5 bg-indigo-600 text-white rounded-lg font-medium
+                     hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-sm px-4 py-1.5 text-gray-600 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── CardComments (main export) ───────────────────────────────────────────────
+
+export default function CardComments({ cardId, board, setBoard }) {
+  const { user } = useAuth()
+  const [showForm, setShowForm] = useState(false)
+
+  // Force a re-render every 30s so relative timestamps stay accurate.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const comments = board.cards[cardId]?.comments ?? []
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+
+  function addComment(text) {
+    setBoard(b => updateCard(b, cardId, card => ({
+      ...card,
+      comments: [...(card.comments ?? []), {
+        id:        crypto.randomUUID(),
+        authorId:  user.id,
+        text,
+        createdAt: new Date().toISOString(),
+        editedAt:  null,
+        reactions: {},
+      }],
+    })))
+    setShowForm(false)
+  }
+
+  function saveEdit(commentId, text) {
+    setBoard(b => updateCard(b, cardId, card => ({
+      ...card,
+      comments: card.comments.map(c =>
+        c.id === commentId
+          ? { ...c, text, editedAt: new Date().toISOString() }
+          : c
+      ),
+    })))
   }
 
   function deleteComment(commentId) {
-    setBoard(b => ({
-      ...b,
-      cards: {
-        ...b.cards,
-        [cardId]: {
-          ...b.cards[cardId],
-          comments: b.cards[cardId].comments.filter(c => c.id !== commentId),
-        },
-      },
-    }))
+    setBoard(b => updateCard(b, cardId, card => ({
+      ...card,
+      comments: card.comments.filter(c => c.id !== commentId),
+    })))
   }
 
   function toggleReaction(commentId, emoji) {
-    setBoard(b => {
-      const card    = b.cards[cardId]
-      const comment = card.comments.find(c => c.id === commentId)
-      const users   = comment.reactions[emoji] ?? []
-      const newUsers = users.includes(user.id)
-        ? users.filter(u => u !== user.id)
-        : [...users, user.id]
-      const newReactions = { ...comment.reactions }
-      if (newUsers.length === 0) delete newReactions[emoji]
-      else newReactions[emoji] = newUsers
-      return {
-        ...b,
-        cards: {
-          ...b.cards,
-          [cardId]: {
-            ...card,
-            comments: card.comments.map(c =>
-              c.id === commentId ? { ...c, reactions: newReactions } : c
-            ),
-          },
-        },
-      }
-    })
-    setShowEmojiFor(null)
+    setBoard(b => updateCard(b, cardId, card => ({
+      ...card,
+      comments: card.comments.map(c => {
+        if (c.id !== commentId) return c
+        const users    = c.reactions[emoji] ?? []
+        const newUsers = users.includes(user.id)
+          ? users.filter(u => u !== user.id)
+          : [...users, user.id]
+        const newReactions = { ...c.reactions }
+        if (newUsers.length === 0) delete newReactions[emoji]
+        else newReactions[emoji] = newUsers
+        return { ...c, reactions: newReactions }
+      }),
+    })))
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
@@ -432,39 +446,22 @@ export default function CardComments({ cardId, board, setBoard }) {
         Comments{comments.length > 0 ? ` (${comments.length})` : ''}
       </h2>
 
-      {/* Comment list */}
       {comments.map(comment => (
         <CommentItem
           key={comment.id}
           comment={comment}
           currentUser={user}
-          isEditing={editingId === comment.id}
-          editText={editText}
-          editMentionQuery={editMentionQuery}
-          editTextareaRef={editTextareaRef}
-          showEmojiPicker={showEmojiFor === comment.id}
-          onStartEdit={() => { setEditingId(comment.id); setEditText(comment.text) }}
-          onCancelEdit={() => { setEditingId(null); setEditMentionQuery(null) }}
-          onSaveEdit={() => saveEdit(comment.id)}
-          onEditTextChange={handleEditTextChange}
-          onInsertMention={username => insertMention(username, true)}
+          onSave={saveEdit}
           onDelete={() => deleteComment(comment.id)}
-          onToggleEmojiPicker={() => setShowEmojiFor(prev => prev === comment.id ? null : comment.id)}
           onAddReaction={emoji => toggleReaction(comment.id, emoji)}
         />
       ))}
 
-      {/* Add comment form or CTA */}
       {showForm ? (
         <CommentForm
           user={user}
-          text={text}
-          textareaRef={textareaRef}
-          mentionQuery={mentionQuery}
-          onTextChange={handleTextChange}
-          onInsertMention={username => insertMention(username, false)}
           onSubmit={addComment}
-          onCancel={() => { setShowForm(false); setText(''); setMentionQuery(null) }}
+          onCancel={() => setShowForm(false)}
         />
       ) : (
         <button

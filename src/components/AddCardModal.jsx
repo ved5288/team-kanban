@@ -33,7 +33,7 @@ export default function AddCardModal({ defaultColumnId, onSave, onClose }) {
     if (!title.trim()) return
 
     onSave({
-      id:          `card-${Date.now()}`,
+      id:          crypto.randomUUID(),
       title:       title.trim(),
       description: description.trim(),
       priority,
