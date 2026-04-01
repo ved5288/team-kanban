@@ -57,20 +57,20 @@ export default function CardDetail() {
   const [board, setBoard] = useLocalStorage('kanban_board', INITIAL_BOARD)
 
   // Support opening directly in edit mode (e.g. from the board's hover edit button)
-  const initialCard = board.cards[id]
-  const startInEditMode = !!location.state?.editing && !!initialCard
+  const card = board.cards[id]
+  const startInEditMode = !!location.state?.editing && !!card
 
   const [isEditing, setIsEditing] = useState(startInEditMode)
   const [draft, setDraft] = useState(() => {
-    if (!startInEditMode || !initialCard) return null
+    if (!startInEditMode || !card) return null
     return {
-      title: initialCard.title,
-      description: initialCard.description ?? '',
-      priority: initialCard.priority,
-      assignee: initialCard.assignee,
-      columnId: initialCard.columnId,
-      createdAt: initialCard.createdAt,
-      color: initialCard.color ?? CARD_COLORS[0].value,
+      title: card.title,
+      description: card.description ?? '',
+      priority: card.priority,
+      assignee: card.assignee,
+      columnId: card.columnId,
+      createdAt: card.createdAt,
+      color: card.color ?? CARD_COLORS[0].value,
     }
   })
   const [showToast, setShowToast] = useState(false)
@@ -80,8 +80,6 @@ export default function CardDetail() {
     const timer = setTimeout(() => setShowToast(false), 5000)
     return () => clearTimeout(timer)
   }, [showToast])
-
-  const card = board.cards[id]
 
   // ── Not found ────────────────────────────────────────────────────────────────
 
@@ -107,7 +105,6 @@ export default function CardDetail() {
   const column = board.columns[columnId]
   const columnTitle = column?.title ?? columnId
   const priorityStyle = PRIORITY_STYLES[priority] ?? { badge: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' }
-  const stripeColor = color ?? 'bg-slate-400'
 
   // ── Edit handlers ────────────────────────────────────────────────────────────
 
@@ -130,6 +127,8 @@ export default function CardDetail() {
   }
 
   const saveChanges = () => {
+    if (!draft.title.trim()) return
+
     setBoard((prev) => {
       const oldColumnId = card.columnId
       const newColumnId = draft.columnId
@@ -200,7 +199,9 @@ export default function CardDetail() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
 
           {/* Colour stripe */}
-          <div className={`h-1.5 w-full ${isEditing ? draft.color : stripeColor}`} />
+          {(isEditing ? draft.color : color) && (
+            <div className={`h-1.5 w-full ${isEditing ? draft.color : color}`} />
+          )}
 
           <div className="p-8 space-y-6">
 
@@ -338,6 +339,7 @@ export default function CardDetail() {
                                focus:outline-none focus:border-indigo-500"
                     value={draft.createdAt.slice(0, 10)}
                     onChange={(e) =>
+                      e.target.value &&
                       setDraft({ ...draft, createdAt: new Date(e.target.value).toISOString() })
                     }
                   />
