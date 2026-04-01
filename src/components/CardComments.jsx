@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../App'
-import { updateCard } from './comments/commentHelpers'
+import { patchCard } from './comments/commentHelpers'
 import CommentItem from './comments/CommentItem'
 import CommentForm from './comments/CommentForm'
 
@@ -20,7 +20,7 @@ export default function CardComments({ cardId, board, setBoard }) {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   function addComment(text) {
-    setBoard(b => updateCard(b, cardId, card => ({
+    setBoard(b => patchCard(b, cardId, card => ({
       ...card,
       comments: [...(card.comments ?? []), {
         id:        crypto.randomUUID(),
@@ -35,7 +35,7 @@ export default function CardComments({ cardId, board, setBoard }) {
   }
 
   function saveEdit(commentId, text) {
-    setBoard(b => updateCard(b, cardId, card => ({
+    setBoard(b => patchCard(b, cardId, card => ({
       ...card,
       comments: card.comments.map(c =>
         c.id === commentId
@@ -46,14 +46,14 @@ export default function CardComments({ cardId, board, setBoard }) {
   }
 
   function deleteComment(commentId) {
-    setBoard(b => updateCard(b, cardId, card => ({
+    setBoard(b => patchCard(b, cardId, card => ({
       ...card,
       comments: card.comments.filter(c => c.id !== commentId),
     })))
   }
 
   function toggleReaction(commentId, emoji) {
-    setBoard(b => updateCard(b, cardId, card => ({
+    setBoard(b => patchCard(b, cardId, card => ({
       ...card,
       comments: card.comments.map(c => {
         if (c.id !== commentId) return c

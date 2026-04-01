@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 
+// onAddLane(name) must return true on success or false to keep the form open
+// (e.g. when the name is a duplicate). See useBoard.addLane.
 export default function AddLaneForm({ onAddLane }) {
   const [isAddingLane, setIsAddingLane] = useState(false)
   const [newLaneName, setNewLaneName] = useState('')

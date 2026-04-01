@@ -24,6 +24,7 @@ import AddLaneForm from './AddLaneForm'
 export default function Board() {
   const {
     board,
+    setBoard,
     handleAddCard,
     handleUpdateCard,
     handleDeleteCard,

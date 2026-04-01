@@ -17,8 +17,9 @@ export function getMentionQuery(value, cursorPos) {
   return match ? match[1] : null
 }
 
-// Shallow board update — avoids repeating the nested spread pattern.
-export function updateCard(board, cardId, updater) {
+// Applies an updater function to a single card without mutating the board.
+// Named distinctly from the full handleUpdateCard operation in useBoard.
+export function patchCard(board, cardId, updater) {
   return {
     ...board,
     cards: {

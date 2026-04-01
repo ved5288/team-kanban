@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { INITIAL_BOARD } from '../data/mockData'
 import { useLocalStorage } from './useLocalStorage'
 
@@ -6,7 +7,7 @@ export function useBoard() {
 
   // ── Add a new card ──────────────────────────────────────────────────────────
 
-  const handleAddCard = (newCard) => {
+  const handleAddCard = useCallback((newCard) => {
     setBoard((prev) => {
       const column = prev.columns[newCard.columnId]
       return {
@@ -24,11 +25,11 @@ export function useBoard() {
         },
       }
     })
-  }
+  }, [setBoard])
 
   // ── Update a card ───────────────────────────────────────────────────────────
 
-  const handleUpdateCard = (updatedCard) => {
+  const handleUpdateCard = useCallback((updatedCard) => {
     setBoard((prev) => {
       const oldCard = prev.cards[updatedCard.id]
       if (!oldCard) return prev
@@ -61,11 +62,11 @@ export function useBoard() {
         columns,
       }
     })
-  }
+  }, [setBoard])
 
   // ── Delete a card ───────────────────────────────────────────────────────────
 
-  const handleDeleteCard = (cardId) => {
+  const handleDeleteCard = useCallback((cardId) => {
     setBoard((prev) => {
       const card = prev.cards[cardId]
       if (!card) return prev
@@ -87,11 +88,11 @@ export function useBoard() {
         },
       }
     })
-  }
+  }, [setBoard])
 
   // ── Move a card (drag & drop) ──────────────────────────────────────────────
 
-  const handleMoveCard = (cardId, targetColumnId, targetIndex) => {
+  const handleMoveCard = useCallback((cardId, targetColumnId, targetIndex) => {
     setBoard((prev) => {
       const card = prev.cards[cardId]
       if (!card) return prev
@@ -148,12 +149,13 @@ export function useBoard() {
         }
       }
     })
-  }
+  }, [setBoard])
 
   // ── Add a new lane ──────────────────────────────────────────────────────────
-  // Returns true on success, false if name is a duplicate.
+  // Returns true on success, false if the name is a duplicate (caller should
+  // keep the form open so the user can correct the name).
 
-  const addLane = (name) => {
+  const addLane = useCallback((name) => {
     const duplicate = Object.values(board.columns).some(
       (col) => col.title.toLowerCase() === name.toLowerCase()
     )
@@ -172,11 +174,13 @@ export function useBoard() {
       columnOrder: [...prev.columnOrder, colId],
     }))
     return true
-  }
+  }, [board.columns, setBoard])
 
   // ── Delete a lane ─────────────────────────────────────────────────────────
 
-  const handleDeleteLane = (columnId) => {
+  const handleDeleteLane = useCallback((columnId) => {
+    // Read from current board for the confirmation message (UI only — not used
+    // inside the state updater, so stale-closure risk here is acceptable).
     const column = board.columns[columnId]
     if (!column) return
 
@@ -188,8 +192,13 @@ export function useBoard() {
     if (!window.confirm(message)) return
 
     setBoard((prev) => {
+      // Use prev to ensure we delete the correct card IDs even if the board
+      // state has changed since the confirmation dialog was shown.
+      const col = prev.columns[columnId]
+      if (!col) return prev
+
       const remainingCards = { ...prev.cards }
-      for (const cardId of column.cardIds) {
+      for (const cardId of col.cardIds) {
         delete remainingCards[cardId]
       }
 
@@ -202,15 +211,15 @@ export function useBoard() {
         columnOrder: prev.columnOrder.filter((id) => id !== columnId),
       }
     })
-  }
+  }, [board.columns, setBoard])
 
   // ── Reset board (dev helper) ────────────────────────────────────────────────
 
-  const resetBoard = () => {
+  const resetBoard = useCallback(() => {
     if (window.confirm('Reset board to the original demo data? All changes will be lost.')) {
       setBoard(INITIAL_BOARD)
     }
-  }
+  }, [setBoard])
 
   return {
     board,
