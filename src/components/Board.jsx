@@ -3,12 +3,14 @@ import { INITIAL_BOARD } from '../data/mockData'
 import { countActiveFilters } from '../utils/filterUtils'
 import { useBoard } from '../hooks/useBoard'
 import { useFilters } from '../hooks/useFilters'
+import { useBulkSelect } from '../hooks/useBulkSelect'
 import Header from './Header'
 import Column from './Column'
 import AddCardModal from './AddCardModal'
 import CardDetailModal from './CardDetailModal'
 import FilterBar from './FilterBar'
 import AddLaneForm from './AddLaneForm'
+import BulkActionBar from './BulkActionBar'
 
 /**
  * The main board view.
@@ -32,15 +34,27 @@ export default function Board() {
     addLane,
     handleDeleteLane,
     resetBoard,
+    handleBulkDelete,
+    handleBulkMove,
+    handleBulkUpdate,
   } = useBoard()
 
   const { activeFilters, setActiveFilters, filteredCards } = useFilters(board.cards)
+
+  const bulk = useBulkSelect()
 
   // Which column's "Add card" was clicked (null = modal closed)
   const [addingToColumn, setAddingToColumn] = useState(null)
 
   // Which card's detail popup is open (null = closed, string = cardId)
   const [viewingCardId, setViewingCardId] = useState(null)
+
+  // Flat ordered list of all visible card IDs (for shift-range selection)
+  const allVisibleIds = board.columnOrder.flatMap((colId) => {
+    const col = board.columns[colId]
+    if (!col) return []
+    return col.cardIds.filter((id) => id in filteredCards)
+  })
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -55,12 +69,27 @@ export default function Board() {
         <p className="text-sm text-gray-500">
           {Object.keys(board.cards).length} cards across {board.columnOrder.length} columns
         </p>
-        <button
-          onClick={resetBoard}
-          className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-        >
-          ↺ Reset board
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Bulk select toggle */}
+          <button
+            onClick={bulk.isSelecting ? bulk.exitSelectMode : bulk.enterSelectMode}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+              ${bulk.isSelecting
+                ? 'bg-indigo-600 text-white border-indigo-600'
+                : 'border-gray-300 text-gray-600 hover:border-indigo-400 hover:text-indigo-600'}`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {bulk.isSelecting ? `Selecting (${bulk.selectedIds.size})` : 'Select'}
+          </button>
+          <button
+            onClick={resetBoard}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            ↺ Reset board
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -88,6 +117,12 @@ export default function Board() {
               onDeleteCard={handleDeleteCard}
               onMoveCard={handleMoveCard}
               onDeleteLane={isDefault ? undefined : handleDeleteLane}
+              isSelecting={bulk.isSelecting}
+              isSelected={bulk.isSelected}
+              onSelectCard={(cardId, e) => e.shiftKey
+                ? bulk.shiftSelectRange(cardId, allVisibleIds)
+                : bulk.toggleCard(cardId)
+              }
             />
           )
         })}
@@ -118,6 +153,32 @@ export default function Board() {
           setBoard={setBoard}
           onSave={handleUpdateCard}
           onClose={() => setViewingCardId(null)}
+        />
+      )}
+
+      {/* Bulk action bar */}
+      {bulk.isSelecting && (
+        <BulkActionBar
+          selectedCount={bulk.selectedIds.size}
+          totalCount={allVisibleIds.length}
+          columns={board.columns}
+          columnOrder={board.columnOrder}
+          onSelectAll={() => bulk.selectAll(allVisibleIds)}
+          onDeselectAll={bulk.deselectAll}
+          onExit={bulk.exitSelectMode}
+          onDelete={() => {
+            if (!window.confirm(`Delete ${bulk.selectedIds.size} card${bulk.selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`)) return
+            handleBulkDelete(bulk.selectedIds)
+            bulk.exitSelectMode()
+          }}
+          onMove={(targetColumnId) => {
+            handleBulkMove(bulk.selectedIds, targetColumnId)
+            bulk.exitSelectMode()
+          }}
+          onUpdate={(field, value) => {
+            handleBulkUpdate(bulk.selectedIds, field, value)
+            bulk.deselectAll()
+          }}
         />
       )}
 
