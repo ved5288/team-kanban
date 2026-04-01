@@ -39,6 +39,17 @@ export const INITIAL_BOARD = {
       assignee: 'malvika',
       columnId: 'in-review',
       createdAt: new Date(now - 4 * DAY).toISOString(),
+      checklists: [
+        {
+          id: 'cl-1',
+          title: 'QA Checklist',
+          items: [
+            { id: 'cli-1', text: 'Test in Chrome', completed: true, createdAt: new Date(now - 3 * DAY).toISOString() },
+            { id: 'cli-2', text: 'Test in Firefox', completed: true, createdAt: new Date(now - 3 * DAY).toISOString() },
+            { id: 'cli-3', text: 'Test in Safari', completed: false, createdAt: new Date(now - 3 * DAY).toISOString() },
+          ],
+        },
+      ],
     },
     'card-4': {
       id: 'card-4',
@@ -57,6 +68,18 @@ export const INITIAL_BOARD = {
       assignee: 'yash',
       columnId: 'in-progress',
       createdAt: new Date(now - 2 * DAY).toISOString(),
+      checklists: [
+        {
+          id: 'cl-2',
+          title: 'Implementation Steps',
+          items: [
+            { id: 'cli-4', text: 'Add search input to header', completed: true, createdAt: new Date(now - 2 * DAY).toISOString() },
+            { id: 'cli-5', text: 'Wire up filter logic across columns', completed: false, createdAt: new Date(now - 2 * DAY).toISOString() },
+            { id: 'cli-6', text: 'Highlight matching text', completed: false, createdAt: new Date(now - 2 * DAY).toISOString() },
+            { id: 'cli-7', text: 'Handle empty results state', completed: false, createdAt: new Date(now - 2 * DAY).toISOString() },
+          ],
+        },
+      ],
     },
     'card-6': {
       id: 'card-6',

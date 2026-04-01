@@ -1,25 +1,20 @@
 import { useState } from 'react'
 import { USERS } from '../data/users'
 import { useAuth } from '../App'
+import DatePicker from './DatePicker'
 
 const PRIORITIES = ['High', 'Medium', 'Low']
-
-const COLUMNS = [
-  { id: 'todo',        label: 'To Do'       },
-  { id: 'in-progress', label: 'In Progress' },
-  { id: 'in-review',   label: 'In Review'   },
-  { id: 'done',        label: 'Done'        },
-]
 
 /**
  * Modal dialog for creating a new card.
  *
  * Props:
  *  defaultColumnId - the column that the "Add card" button was clicked in
+ *  columns         - array of { id, title } for all current board columns
  *  onSave          - (newCard) => void   called with the new card data
  *  onClose         - () => void          called when the modal is dismissed
  */
-export default function AddCardModal({ defaultColumnId, onSave, onClose }) {
+export default function AddCardModal({ defaultColumnId, columns, onSave, onClose }) {
   const { user } = useAuth()
 
   const [title,       setTitle]       = useState('')
@@ -27,18 +22,20 @@ export default function AddCardModal({ defaultColumnId, onSave, onClose }) {
   const [priority,    setPriority]    = useState('Medium')
   const [assignee,    setAssignee]    = useState(user?.id ?? 'alice')
   const [columnId,    setColumnId]    = useState(defaultColumnId ?? 'todo')
+  const [dueDate,     setDueDate]     = useState(null)
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!title.trim()) return
 
     onSave({
-      id:          `card-${Date.now()}`,
+      id:          crypto.randomUUID(),
       title:       title.trim(),
       description: description.trim(),
       priority,
       assignee,
       columnId,
+      dueDate,
       createdAt:   new Date().toISOString(),
     })
   }
@@ -141,10 +138,18 @@ export default function AddCardModal({ defaultColumnId, onSave, onClose }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
                          focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             >
-              {COLUMNS.map((col) => (
-                <option key={col.id} value={col.id}>{col.label}</option>
+              {columns.map((col) => (
+                <option key={col.id} value={col.id}>{col.title}</option>
               ))}
             </select>
+          </div>
+
+          {/* Due Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Due Date <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <DatePicker value={dueDate} onChange={setDueDate} />
           </div>
 
           {/* Actions */}
