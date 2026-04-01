@@ -52,8 +52,11 @@ function getDropIndex(listEl, mouseY) {
  *  onDeleteCard    - (cardId)   => void   deletes a card
  *  onMoveCard      - (cardId, targetColumnId, targetIndex) => void   moves a card
  *  onDeleteLane    - (columnId) => void   deletes the lane (undefined for default lanes)
+ *  isSelecting     - bool: bulk selection mode active
+ *  isSelected      - (cardId) => bool
+ *  onSelectCard    - (cardId, e) => void
  */
-export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onViewCard, onDeleteCard, onMoveCard, onDeleteLane }) {
+export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onViewCard, onDeleteCard, onMoveCard, onDeleteLane, isSelecting, isSelected, onSelectCard }) {
   const { id, title, cardIds } = column
   // Use filtered IDs when provided, fall back to all IDs for backward compatibility
   const columnCards = (filteredCardIds ?? cardIds).map((cid) => cards[cid]).filter(Boolean)
@@ -191,6 +194,9 @@ export default function Column({ column, cards, filteredCardIds, isFiltering, on
                 <Card
                   card={card}
                   onView={onViewCard}
+                  isSelecting={isSelecting}
+                  isSelected={isSelected?.(card.id) ?? false}
+                  onSelect={onSelectCard}
                 />
               </div>
             ))}
