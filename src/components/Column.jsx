@@ -9,6 +9,22 @@ const COLUMN_COLORS = {
   'done':        'bg-emerald-500',
 }
 
+// Given a list container element and a mouse Y position, returns the index
+// where a dropped card should be inserted.
+function getDropIndex(listEl, mouseY) {
+  const cardElements = Array.from(listEl.querySelectorAll('[data-card-id]'))
+
+  if (cardElements.length === 0) return 0
+
+  for (let i = 0; i < cardElements.length; i++) {
+    const rect = cardElements[i].getBoundingClientRect()
+    const midpoint = rect.top + rect.height / 2
+    if (mouseY < midpoint) return i
+  }
+
+  return cardElements.length
+}
+
 /**
  * Renders a single Kanban column with drag-and-drop support.
  *
@@ -27,57 +43,20 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onMoveC
   // Track where the drop indicator should appear: index in the card list
   const [dropIndex, setDropIndex] = useState(null)
 
-  // Which card is being dragged (so we don't show indicator on itself)
-  const [draggedCardId, setDraggedCardId] = useState(null)
-
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
-  // Calculate which index the card should drop at based on mouse Y position
   const handleDragOverList = (e) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-
-    const cardId = e.dataTransfer.types.includes('text/plain') ? true : false
-    if (!cardId) return
-
-    const listEl = e.currentTarget
-    const cardElements = Array.from(listEl.querySelectorAll('[data-card-id]'))
-
-    if (cardElements.length === 0) {
-      setDropIndex(0)
-      return
-    }
-
-    const mouseY = e.clientY
-    let targetIndex = cardElements.length // default: drop at end
-
-    for (let i = 0; i < cardElements.length; i++) {
-      const rect = cardElements[i].getBoundingClientRect()
-      const midpoint = rect.top + rect.height / 2
-      if (mouseY < midpoint) {
-        targetIndex = i
-        break
-      }
-    }
-
-    setDropIndex(targetIndex)
+    setDropIndex(getDropIndex(e.currentTarget, e.clientY))
   }
 
   const handleDragEnter = (e) => {
     e.preventDefault()
-    // Read the dragged card ID from dataTransfer
-    setDraggedCardId(null) // reset — actual ID read on drop
   }
 
   const handleDragLeave = (e) => {
     // Only reset if we actually left the column (not just moved between children)
-    const relatedTarget = e.relatedTarget
-    if (!e.currentTarget.contains(relatedTarget)) {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
       setDropIndex(null)
-      setDraggedCardId(null)
     }
   }
 
@@ -86,24 +65,9 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onMoveC
     const cardId = e.dataTransfer.getData('text/plain')
     if (!cardId) return
 
-    // Calculate final drop index from mouse position
-    const listEl = e.currentTarget
-    const cardElements = Array.from(listEl.querySelectorAll('[data-card-id]'))
-    const mouseY = e.clientY
-    let targetIndex = cardElements.length
-
-    for (let i = 0; i < cardElements.length; i++) {
-      const rect = cardElements[i].getBoundingClientRect()
-      const midpoint = rect.top + rect.height / 2
-      if (mouseY < midpoint) {
-        targetIndex = i
-        break
-      }
-    }
-
+    const targetIndex = getDropIndex(e.currentTarget, e.clientY)
     onMoveCard(cardId, id, targetIndex)
     setDropIndex(null)
-    setDraggedCardId(null)
   }
 
   return (
@@ -131,31 +95,29 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onMoveC
           <div className="flex items-center justify-center h-16 text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
             No cards yet
           </div>
-        ) : (
-          columnCards.map((card, index) => (
-            <div key={card.id} data-card-id={card.id}>
-              {/* Drop indicator — shown above this card */}
-              {dropIndex === index && (
-                <div className="h-1 bg-indigo-500 rounded-full mb-2 mx-1 transition-all" />
-              )}
-              <Card
-                card={card}
-                onDelete={onDeleteCard}
-              />
-            </div>
-          ))
-        )}
-
-        {/* Drop indicator at the end of the list */}
-        {dropIndex !== null && dropIndex >= columnCards.length && (
-          <div className="h-1 bg-indigo-500 rounded-full mx-1 transition-all" />
-        )}
-
-        {/* Empty column highlight when dragging over */}
-        {columnCards.length === 0 && dropIndex !== null && (
+        ) : columnCards.length === 0 && dropIndex !== null ? (
           <div className="flex items-center justify-center h-16 text-xs text-indigo-500 border-2 border-dashed border-indigo-300 rounded-lg bg-indigo-50">
             Drop here
           </div>
+        ) : (
+          <>
+            {columnCards.map((card, index) => (
+              <div key={card.id} data-card-id={card.id}>
+                {dropIndex === index && (
+                  <div className="h-1 bg-indigo-500 rounded-full mb-2 mx-1" />
+                )}
+                <Card
+                  card={card}
+                  onDelete={onDeleteCard}
+                />
+              </div>
+            ))}
+
+            {/* Drop indicator at the end of the list */}
+            {dropIndex !== null && dropIndex >= columnCards.length && (
+              <div className="h-1 bg-indigo-500 rounded-full mx-1" />
+            )}
+          </>
         )}
       </div>
 

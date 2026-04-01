@@ -87,22 +87,29 @@ export default function Board() {
       if (!sourceColumn || !targetColumn) return prev
 
       // Remove card from source column
+      const sourceIndex = sourceColumn.cardIds.indexOf(cardId)
       const sourceCardIds = sourceColumn.cardIds.filter((id) => id !== cardId)
 
-      // Insert card into target column at the right index
       let targetCardIds
       if (sourceColumnId === targetColumnId) {
-        // Same column — use the already-filtered list
         targetCardIds = [...sourceCardIds]
-        // Clamp index in case it's beyond the end
-        const clampedIndex = Math.min(targetIndex, targetCardIds.length)
+        // Adjust for the removed card: DOM still shows N elements when index was
+        // calculated, but the filtered list has N-1. If dragging downward, decrement.
+        let adjustedIndex = targetIndex
+        if (targetIndex > sourceIndex) {
+          adjustedIndex = targetIndex - 1
+        }
+        const clampedIndex = Math.min(adjustedIndex, targetCardIds.length)
         targetCardIds.splice(clampedIndex, 0, cardId)
       } else {
-        // Different column — insert into target's existing list
         targetCardIds = [...targetColumn.cardIds]
         const clampedIndex = Math.min(targetIndex, targetCardIds.length)
         targetCardIds.splice(clampedIndex, 0, cardId)
       }
+
+      const updatedColumns = { ...prev.columns }
+      updatedColumns[sourceColumnId] = { ...sourceColumn, cardIds: sourceCardIds }
+      updatedColumns[targetColumnId] = { ...targetColumn, cardIds: targetCardIds }
 
       return {
         ...prev,
@@ -110,12 +117,7 @@ export default function Board() {
           ...prev.cards,
           [cardId]: { ...card, columnId: targetColumnId },
         },
-        columns: {
-          ...prev.columns,
-          [sourceColumnId]: { ...sourceColumn, cardIds: sourceCardIds },
-          // If same column, this overwrites the source entry above (which is correct)
-          [targetColumnId]: { ...targetColumn, cardIds: targetCardIds },
-        },
+        columns: updatedColumns,
       }
     })
   }

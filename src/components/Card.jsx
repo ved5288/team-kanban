@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 
@@ -31,16 +32,27 @@ function timeAgo(isoString) {
  */
 export default function Card({ card, onDelete }) {
   const { id, title, description, priority, assignee, createdAt } = card
+  const [isDragging, setIsDragging] = useState(false)
+  const wasDragged = useRef(false)
 
   const handleDragStart = (e) => {
     e.dataTransfer.setData('text/plain', id)
     e.dataTransfer.effectAllowed = 'move'
-    // Add a slight delay so the dragged element gets a visual style
-    e.currentTarget.style.opacity = '0.4'
+    setIsDragging(true)
+    wasDragged.current = true
   }
 
-  const handleDragEnd = (e) => {
-    e.currentTarget.style.opacity = '1'
+  const handleDragEnd = () => {
+    setIsDragging(false)
+    // Reset the flag after a tick so the click handler can check it
+    requestAnimationFrame(() => { wasDragged.current = false })
+  }
+
+  const handleLinkClick = (e) => {
+    // Prevent navigation if the user just finished dragging
+    if (wasDragged.current) {
+      e.preventDefault()
+    }
   }
 
   return (
@@ -48,12 +60,15 @@ export default function Card({ card, onDelete }) {
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm
-                 hover:shadow-md hover:border-gray-300 transition-all cursor-grab active:cursor-grabbing group"
+      className={`bg-white rounded-lg border border-gray-200 p-3 shadow-sm
+                 hover:shadow-md hover:border-gray-300 transition-all cursor-grab active:cursor-grabbing group
+                 ${isDragging ? 'opacity-40' : 'opacity-100'}`}
     >
       {/* Title — click to open the full card detail page */}
       <Link
         to={`/card/${id}`}
+        onClick={handleLinkClick}
+        draggable={false}
         className="block text-sm font-semibold text-gray-800 leading-snug mb-2
                    hover:text-indigo-600 transition-colors"
       >
