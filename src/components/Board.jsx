@@ -126,6 +126,67 @@ export default function Board() {
     })
   }
 
+  // ── Move a card (drag & drop) ──────────────────────────────────────────────
+
+  const handleMoveCard = (cardId, targetColumnId, targetIndex) => {
+    setBoard((prev) => {
+      const card = prev.cards[cardId]
+      if (!card) return prev
+
+      const sourceColumnId = card.columnId
+      const sourceColumn = prev.columns[sourceColumnId]
+      const targetColumn = prev.columns[targetColumnId]
+      if (!sourceColumn || !targetColumn) return prev
+
+      const sourceIndex = sourceColumn.cardIds.indexOf(cardId)
+
+      if (sourceColumnId === targetColumnId) {
+        // Same column reorder
+        // Adjust for the removed card: DOM still shows N elements when index was
+        // calculated, but the filtered list has N-1. If dragging downward, decrement.
+        let adjustedIndex = targetIndex
+        if (targetIndex > sourceIndex) {
+          adjustedIndex = targetIndex - 1
+        }
+        const clampedIndex = Math.min(adjustedIndex, sourceColumn.cardIds.length - 1)
+
+        // Bail out if the card didn't actually move
+        if (clampedIndex === sourceIndex) return prev
+
+        const reorderedIds = [...sourceColumn.cardIds]
+        reorderedIds.splice(sourceIndex, 1)
+        reorderedIds.splice(clampedIndex, 0, cardId)
+
+        return {
+          ...prev,
+          columns: {
+            ...prev.columns,
+            [sourceColumnId]: { ...sourceColumn, cardIds: reorderedIds },
+          },
+        }
+      } else {
+        // Cross-column move
+        const sourceCardIds = sourceColumn.cardIds.filter((id) => id !== cardId)
+        const targetCardIds = [...targetColumn.cardIds]
+        const clampedIndex = Math.min(targetIndex, targetCardIds.length)
+        targetCardIds.splice(clampedIndex, 0, cardId)
+
+        return {
+          ...prev,
+          cards: {
+            ...prev.cards,
+            [cardId]: { ...card, columnId: targetColumnId },
+          },
+          columns: {
+            ...prev.columns,
+            [sourceColumnId]: { ...sourceColumn, cardIds: sourceCardIds },
+            [targetColumnId]: { ...targetColumn, cardIds: targetCardIds },
+          },
+        }
+      }
+    })
+  }
+
   // ── Add a new lane ──────────────────────────────────────────────────────────
 
   const handleAddLane = () => {
@@ -229,6 +290,7 @@ export default function Board() {
               onAddCard={setAddingToColumn}
               onViewCard={setViewingCardId}
               onDeleteCard={handleDeleteCard}
+              onMoveCard={handleMoveCard}
               onDeleteLane={isDefault ? undefined : handleDeleteLane}
             />
           )

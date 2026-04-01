@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
+import { timeAgo } from '../utils/time'
 
 // ─── Priority badge styling ───────────────────────────────────────────────────
 
@@ -6,17 +8,6 @@ const PRIORITY_STYLES = {
   High:   'bg-red-100 text-red-700',
   Medium: 'bg-amber-100 text-amber-700',
   Low:    'bg-green-100 text-green-700',
-}
-
-// ─── Relative timestamp ───────────────────────────────────────────────────────
-
-function timeAgo(isoString) {
-  const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
-  if (seconds < 60)           return 'just now'
-  if (seconds < 3600)         return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400)        return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 86400 * 30)  return `${Math.floor(seconds / 86400)}d ago`
-  return new Date(isoString).toLocaleDateString()
 }
 
 // ─── Card Component ───────────────────────────────────────────────────────────
@@ -30,11 +21,26 @@ function timeAgo(isoString) {
  */
 export default function Card({ card, onView }) {
   const { id, title, description, priority, assignee, createdAt, color } = card
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+    setIsDragging(true)
+  }
+
+  const handleDragEnd = () => {
+    setIsDragging(false)
+  }
 
   return (
     <div
-      className="bg-white rounded-lg border border-gray-200 shadow-sm
-                 hover:shadow-md hover:border-gray-300 transition-all cursor-default group overflow-hidden"
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className={`bg-white rounded-lg border border-gray-200 shadow-sm
+                 hover:shadow-md hover:border-gray-300 transition-all cursor-grab active:cursor-grabbing group overflow-hidden
+                 ${isDragging ? 'opacity-40' : 'opacity-100'}`}
     >
       {/* Colour stripe */}
       {color && <div className={`h-1 w-full ${color}`} />}
@@ -56,7 +62,7 @@ export default function Card({ card, onView }) {
           </p>
         )}
 
-        {/* Footer: priority + assignee + time */}
+        {/* Footer: priority + assignee + time + edit button */}
         <div className="flex items-center justify-between gap-2">
 
           {/* Left: priority badge */}
