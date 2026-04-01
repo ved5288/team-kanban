@@ -47,7 +47,6 @@ export default function Column({ column, cards, onAddCard, onDeleteCard, onViewC
             <Card
               key={card.id}
               card={card}
-              onDelete={onDeleteCard}
               onView={onViewCard}
             />
           ))

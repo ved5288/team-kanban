@@ -26,10 +26,9 @@ function timeAgo(isoString) {
  *
  * Props:
  *  card      - the card data object { id, title, description, priority, assignee, createdAt }
- *  onDelete  - (cardId) => void   called when the user deletes the card
  *  onView    - (cardId) => void   called when the user clicks the card title
  */
-export default function Card({ card, onDelete, onView }) {
+export default function Card({ card, onView }) {
   const { id, title, description, priority, assignee, createdAt } = card
 
   return (
