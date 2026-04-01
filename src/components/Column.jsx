@@ -12,14 +12,17 @@ const COLUMN_COLORS = {
  * Renders a single Kanban column.
  *
  * Props:
- *  column        - { id, title, cardIds }
- *  cards         - full cards map (id → card object) from Board state
- *  onAddCard     - (columnId) => void   opens the AddCard modal for this column
- *  onDeleteCard  - (cardId)   => void   deletes a card
+ *  column          - { id, title, cardIds }
+ *  cards           - full cards map (id → card object) from Board state
+ *  filteredCardIds - array of card IDs that passed active filters (subset of column.cardIds)
+ *  isFiltering     - boolean: true when any filter is active
+ *  onAddCard       - (columnId) => void   opens the AddCard modal for this column
+ *  onDeleteCard    - (cardId)   => void   deletes a card
  */
-export default function Column({ column, cards, onAddCard, onDeleteCard }) {
+export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onDeleteCard }) {
   const { id, title, cardIds } = column
-  const columnCards = cardIds.map((cid) => cards[cid]).filter(Boolean)
+  // Use filtered IDs when provided, fall back to all IDs for backward compatibility
+  const columnCards = (filteredCardIds ?? cardIds).map((cid) => cards[cid]).filter(Boolean)
   const accentColor = COLUMN_COLORS[id] ?? 'bg-gray-400'
 
   return (
@@ -30,7 +33,7 @@ export default function Column({ column, cards, onAddCard, onDeleteCard }) {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-white">{title}</h2>
           <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full font-medium">
-            {columnCards.length}
+            {isFiltering ? `${columnCards.length}/${cardIds.length}` : columnCards.length}
           </span>
         </div>
       </div>
@@ -38,9 +41,18 @@ export default function Column({ column, cards, onAddCard, onDeleteCard }) {
       {/* Card list */}
       <div className="flex flex-col gap-2 p-3 flex-1 min-h-[120px] overflow-y-auto">
         {columnCards.length === 0 ? (
-          <div className="flex items-center justify-center h-16 text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
-            No cards yet
-          </div>
+          isFiltering ? (
+            <div className="flex flex-col items-center justify-center h-16 gap-1
+                            text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg
+                            bg-gray-50/50">
+              <span className="text-base">🔍</span>
+              <span>No cards match the current filters</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-16 text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
+              No cards yet
+            </div>
+          )
         ) : (
           columnCards.map((card) => (
             <Card
