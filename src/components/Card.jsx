@@ -71,10 +71,7 @@ export default function Card({ card, onDelete }) {
             {/* Edit button — visible on card hover */}
             <div className="relative">
               <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  navigate(`/card/${id}`, { state: { editing: true } })
-                }}
+                onClick={() => navigate(`/card/${id}`, { state: { editing: true } })}
                 className="peer opacity-0 group-hover:opacity-100 transition-opacity
                            border border-gray-300 hover:border-indigo-400
                            text-gray-400 hover:text-indigo-600

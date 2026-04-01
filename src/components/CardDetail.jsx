@@ -7,6 +7,7 @@ import { USERS, getUserName, getUserInitials, getUserColor } from '../data/users
 // ─── Card colour palette ──────────────────────────────────────────────────────
 
 const CARD_COLORS = [
+  { label: 'None',    value: null             },
   { label: 'Slate',   value: 'bg-slate-400'   },
   { label: 'Red',     value: 'bg-red-500'     },
   { label: 'Orange',  value: 'bg-orange-500'  },
@@ -70,7 +71,7 @@ export default function CardDetail() {
       assignee: card.assignee,
       columnId: card.columnId,
       createdAt: card.createdAt,
-      color: card.color ?? CARD_COLORS[0].value,
+      color: card.color ?? null,
     }
   })
   const [showToast, setShowToast] = useState(false)
@@ -116,7 +117,7 @@ export default function CardDetail() {
       assignee,
       columnId,
       createdAt,
-      color: color ?? CARD_COLORS[0].value,
+      color: color ?? null,
     })
     setIsEditing(true)
   }
@@ -207,12 +208,18 @@ export default function CardDetail() {
 
             {/* Title */}
             {isEditing ? (
-              <input
-                className="w-full text-2xl font-bold text-gray-900 border-b border-gray-300
-                           focus:border-indigo-500 outline-none pb-1 bg-transparent"
-                value={draft.title}
-                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              />
+              <div>
+                <input
+                  className={`w-full text-2xl font-bold text-gray-900 border-b outline-none pb-1 bg-transparent ${
+                    draft.title.trim() ? 'border-gray-300 focus:border-indigo-500' : 'border-red-400'
+                  }`}
+                  value={draft.title}
+                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                />
+                {!draft.title.trim() && (
+                  <p className="text-xs text-red-500 mt-1">Title is required</p>
+                )}
+              </div>
             ) : (
               <h1 className="text-2xl font-bold text-gray-900 leading-snug">{title}</h1>
             )}
@@ -364,10 +371,12 @@ export default function CardDetail() {
                   <div className="flex flex-wrap gap-2">
                     {CARD_COLORS.map(({ label, value }) => (
                       <button
-                        key={value}
+                        key={label}
                         title={label}
                         onClick={() => setDraft({ ...draft, color: value })}
-                        className={`w-7 h-7 rounded-full ${value} transition-transform hover:scale-110 ${
+                        className={`w-7 h-7 rounded-full transition-transform hover:scale-110 ${
+                          value ?? 'border-2 border-gray-300 bg-white'
+                        } ${
                           draft.color === value ? 'ring-2 ring-offset-2 ring-gray-500 scale-110' : ''
                         }`}
                       />
@@ -394,8 +403,10 @@ export default function CardDetail() {
                   </button>
                   <button
                     onClick={saveChanges}
+                    disabled={!draft.title.trim()}
                     className="text-sm px-4 py-2 rounded-lg bg-indigo-600 text-white
-                               hover:bg-indigo-700 transition-colors"
+                               hover:bg-indigo-700 transition-colors
+                               disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Save
                   </button>
