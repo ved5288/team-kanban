@@ -15,10 +15,9 @@ const COLUMN_COLORS = {
  *  column        - { id, title, cardIds }
  *  cards         - full cards map (id → card object) from Board state
  *  onAddCard     - (columnId) => void   opens the AddCard modal for this column
- *  onDeleteCard  - (cardId)   => void   deletes a card
  *  onViewCard    - (cardId)   => void   opens the card detail popup
  */
-export default function Column({ column, cards, onAddCard, onDeleteCard, onViewCard }) {
+export default function Column({ column, cards, onAddCard, onViewCard }) {
   const { id, title, cardIds } = column
   const columnCards = cardIds.map((cid) => cards[cid]).filter(Boolean)
   const accentColor = COLUMN_COLORS[id] ?? 'bg-gray-400'

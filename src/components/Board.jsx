@@ -155,7 +155,6 @@ export default function Board() {
               column={column}
               cards={board.cards}
               onAddCard={setAddingToColumn}
-              onDeleteCard={handleDeleteCard}
               onViewCard={setViewingCardId}
             />
           )
