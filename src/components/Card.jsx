@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
+import { timeAgo } from '../utils/time'
 
 // ─── Priority badge styling ───────────────────────────────────────────────────
 
@@ -8,17 +9,6 @@ const PRIORITY_STYLES = {
   High:   'bg-red-100 text-red-700',
   Medium: 'bg-amber-100 text-amber-700',
   Low:    'bg-green-100 text-green-700',
-}
-
-// ─── Relative timestamp ───────────────────────────────────────────────────────
-
-function timeAgo(isoString) {
-  const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
-  if (seconds < 60)           return 'just now'
-  if (seconds < 3600)         return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400)        return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 86400 * 30)  return `${Math.floor(seconds / 86400)}d ago`
-  return new Date(isoString).toLocaleDateString()
 }
 
 // ─── Card Component ───────────────────────────────────────────────────────────

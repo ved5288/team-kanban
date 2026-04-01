@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { INITIAL_BOARD } from '../data/mockData'
-import { USERS, getUserName, getUserInitials, getUserColor } from '../data/users'
+import { USERS, getUserName } from '../data/users'
+import { timeAgo, formatDate } from '../utils/time'
+import Avatar from './Avatar'
+import CardComments from './CardComments'
 
 // ─── Card colour palette ──────────────────────────────────────────────────────
 
@@ -26,26 +29,6 @@ const PRIORITY_STYLES = {
   High:   { badge: 'bg-red-100 text-red-700',     dot: 'bg-red-500'   },
   Medium: { badge: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
   Low:    { badge: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(isoString) {
-  return new Date(isoString).toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-function timeAgo(isoString) {
-  const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000)
-  if (seconds < 60)          return 'just now'
-  if (seconds < 3600)        return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400)       return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 86400 * 30)  return `${Math.floor(seconds / 86400)}d ago`
-  return formatDate(isoString)
 }
 
 // ─── CardDetail Component ─────────────────────────────────────────────────────
@@ -320,12 +303,7 @@ export default function CardDetail() {
                   </select>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center
-                                  text-white text-sm font-bold shrink-0 ${getUserColor(assignee)}`}
-                    >
-                      {getUserInitials(assignee)}
-                    </div>
+                    <Avatar userId={assignee} size="md" />
                     <div>
                       <p className="text-sm font-medium text-gray-800">{getUserName(assignee)}</p>
                       <p className="text-xs text-gray-400">@{assignee}</p>
@@ -421,6 +399,11 @@ export default function CardDetail() {
                 </button>
               )}
             </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Comments */}
+            <CardComments cardId={id} board={board} setBoard={setBoard} />
 
           </div>
         </div>
