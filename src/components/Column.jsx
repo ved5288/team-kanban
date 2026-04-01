@@ -30,8 +30,9 @@ function getColumnColor(id) {
  *  cards         - full cards map (id → card object) from Board state
  *  onAddCard     - (columnId) => void   opens the AddCard modal for this column
  *  onDeleteCard  - (cardId)   => void   deletes a card
+ *  onDeleteLane  - (columnId) => void   deletes the lane (undefined for default lanes)
  */
-export default function Column({ column, cards, onAddCard, onDeleteCard }) {
+export default function Column({ column, cards, onAddCard, onDeleteCard, onDeleteLane }) {
   const { id, title, cardIds } = column
   const columnCards = cardIds.map((cid) => cards[cid]).filter(Boolean)
   const accentColor = getColumnColor(id)
@@ -43,9 +44,20 @@ export default function Column({ column, cards, onAddCard, onDeleteCard }) {
       <div className={`${accentColor} px-4 py-2`}>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-white">{title}</h2>
-          <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full font-medium">
-            {columnCards.length}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full font-medium">
+              {columnCards.length}
+            </span>
+            {onDeleteLane && (
+              <button
+                onClick={() => onDeleteLane(id)}
+                className="text-white/60 hover:text-white transition-colors text-sm leading-none"
+                title="Delete lane"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

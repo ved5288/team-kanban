@@ -91,6 +91,15 @@ export default function Board() {
     const name = newLaneName.trim()
     if (!name) return
 
+    // Prevent duplicate lane names (case-insensitive)
+    const duplicate = Object.values(board.columns).some(
+      (col) => col.title.toLowerCase() === name.toLowerCase()
+    )
+    if (duplicate) {
+      alert(`A lane named "${name}" already exists.`)
+      return
+    }
+
     const colId = `col-${Date.now()}`
     setBoard((prev) => ({
       ...prev,
@@ -102,6 +111,38 @@ export default function Board() {
     }))
     setNewLaneName('')
     setIsAddingLane(false)
+  }
+
+  // ── Delete a lane ─────────────────────────────────────────────────────────
+
+  const handleDeleteLane = (columnId) => {
+    const column = board.columns[columnId]
+    if (!column) return
+
+    const cardCount = column.cardIds.length
+    const message = cardCount > 0
+      ? `Delete "${column.title}" and its ${cardCount} card${cardCount > 1 ? 's' : ''}? This cannot be undone.`
+      : `Delete the empty lane "${column.title}"?`
+
+    if (!window.confirm(message)) return
+
+    setBoard((prev) => {
+      // Remove cards that belong to this column
+      const remainingCards = { ...prev.cards }
+      for (const cardId of column.cardIds) {
+        delete remainingCards[cardId]
+      }
+
+      // Remove the column itself
+      const { [columnId]: _removed, ...remainingColumns } = prev.columns
+
+      return {
+        ...prev,
+        cards: remainingCards,
+        columns: remainingColumns,
+        columnOrder: prev.columnOrder.filter((id) => id !== columnId),
+      }
+    })
   }
 
   // ── Reset board (dev helper) ────────────────────────────────────────────────
@@ -138,6 +179,7 @@ export default function Board() {
         {board.columnOrder.map((colId) => {
           const column = board.columns[colId]
           if (!column) return null
+          const isDefault = colId in INITIAL_BOARD.columns
           return (
             <Column
               key={colId}
@@ -145,6 +187,7 @@ export default function Board() {
               cards={board.cards}
               onAddCard={setAddingToColumn}
               onDeleteCard={handleDeleteCard}
+              onDeleteLane={isDefault ? undefined : handleDeleteLane}
             />
           )
         })}
