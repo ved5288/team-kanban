@@ -332,7 +332,6 @@ function CommentForm({ user, onSubmit, onCancel }) {
       <div className="flex items-center gap-2">
         <Avatar userId={user.id} />
         <span className="text-sm font-semibold text-gray-800">{getUserName(user.id)}</span>
-        <span className="text-xs text-gray-400">@{user.id}</span>
       </div>
 
       {/* Textarea */}
