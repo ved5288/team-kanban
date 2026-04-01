@@ -59,10 +59,12 @@ function Chip({ label, onRemove }) {
  * Board-level filter bar.
  *
  * Props:
- *  activeFilters - { priority: string[], assignees: string[], dateFilter: null|object }
- *  onChange      - (newFilters) => void  receives the full updated filters object
+ *  activeFilters    - { priority: string[], assignees: string[], dateFilter: null|object }
+ *  onChange         - (newFilters) => void  receives the full updated filters object
+ *  viewMode         - 'board' | 'table'
+ *  onViewModeChange - (mode) => void
  */
-export default function FilterBar({ activeFilters, onChange }) {
+export default function FilterBar({ activeFilters, onChange, viewMode, onViewModeChange }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const { priority, assignees, dateFilter } = activeFilters
   const activeCount = countActiveFilters(activeFilters)
@@ -125,15 +127,47 @@ export default function FilterBar({ activeFilters, onChange }) {
           </div>
         )}
 
-        {/* Clear all — right-aligned */}
-        {activeCount > 0 && (
-          <button
-            onClick={clearAll}
-            className="ml-auto text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0"
-          >
-            Clear all filters
-          </button>
-        )}
+        {/* Right side: clear all + view toggle */}
+        <div className="ml-auto flex items-center gap-3">
+          {activeCount > 0 && (
+            <button
+              onClick={clearAll}
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0"
+            >
+              Clear all filters
+            </button>
+          )}
+
+          {/* View toggle */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => onViewModeChange('board')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all
+                         ${viewMode === 'board'
+                           ? 'bg-white text-gray-900 shadow-sm'
+                           : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              Board
+            </button>
+            <button
+              onClick={() => onViewModeChange('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all
+                         ${viewMode === 'table'
+                           ? 'bg-white text-gray-900 shadow-sm'
+                           : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M3 10h18M3 14h18M3 6h18M3 18h18" />
+              </svg>
+              Table
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── Expanded filter controls ── */}

@@ -9,6 +9,7 @@ import AddCardModal from './AddCardModal'
 import CardDetailModal from './CardDetailModal'
 import FilterBar from './FilterBar'
 import AddLaneForm from './AddLaneForm'
+import TableView from './TableView'
 
 /**
  * The main board view.
@@ -35,6 +36,9 @@ export default function Board() {
   } = useBoard()
 
   const { activeFilters, setActiveFilters, filteredCards } = useFilters(board.cards)
+
+  // Current view mode: 'board' or 'table'
+  const [viewMode, setViewMode] = useState('board')
 
   // Which column's "Add card" was clicked (null = modal closed)
   const [addingToColumn, setAddingToColumn] = useState(null)
@@ -63,40 +67,56 @@ export default function Board() {
         </button>
       </div>
 
-      {/* Filter bar */}
+      {/* Filter bar + view toggle */}
       <FilterBar
         activeFilters={activeFilters}
         onChange={setActiveFilters}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
-      {/* Columns */}
-      <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
-        {board.columnOrder.map((colId) => {
-          const column = board.columns[colId]
-          if (!column) return null
-          const visibleCardIds = column.cardIds.filter((id) => id in filteredCards)
-          const isDefault = colId in INITIAL_BOARD.columns
-          return (
-            <Column
-              key={colId}
-              column={column}
-              cards={board.cards}
-              filteredCardIds={visibleCardIds}
-              isFiltering={countActiveFilters(activeFilters) > 0}
-              onAddCard={setAddingToColumn}
-              onViewCard={setViewingCardId}
-              onDeleteCard={handleDeleteCard}
-              onMoveCard={handleMoveCard}
-              onDeleteLane={isDefault ? undefined : handleDeleteLane}
-            />
-          )
-        })}
+      {/* Board view */}
+      {viewMode === 'board' && (
+        <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
+          {board.columnOrder.map((colId) => {
+            const column = board.columns[colId]
+            if (!column) return null
+            const visibleCardIds = column.cardIds.filter((id) => id in filteredCards)
+            const isDefault = colId in INITIAL_BOARD.columns
+            return (
+              <Column
+                key={colId}
+                column={column}
+                cards={board.cards}
+                filteredCardIds={visibleCardIds}
+                isFiltering={countActiveFilters(activeFilters) > 0}
+                onAddCard={setAddingToColumn}
+                onViewCard={setViewingCardId}
+                onDeleteCard={handleDeleteCard}
+                onMoveCard={handleMoveCard}
+                onDeleteLane={isDefault ? undefined : handleDeleteLane}
+              />
+            )
+          })}
 
-        {/* Add lane */}
-        <div className="shrink-0 w-72">
-          <AddLaneForm onAddLane={addLane} />
+          {/* Add lane */}
+          <div className="shrink-0 w-72">
+            <AddLaneForm onAddLane={addLane} />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Table view */}
+      {viewMode === 'table' && (
+        <TableView
+          cards={board.cards}
+          filteredCards={filteredCards}
+          columns={board.columns}
+          columnOrder={board.columnOrder}
+          onViewCard={setViewingCardId}
+          onAddCard={() => setAddingToColumn(board.columnOrder[0])}
+        />
+      )}
 
       {/* Add card modal */}
       {addingToColumn && (
