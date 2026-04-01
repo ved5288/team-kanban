@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { INITIAL_BOARD } from '../data/mockData'
 import { countActiveFilters } from '../utils/filterUtils'
 import { useBoard } from '../hooks/useBoard'
 import { useFilters } from '../hooks/useFilters'
 import { useBulkSelect } from '../hooks/useBulkSelect'
+import { useActivity } from '../hooks/useActivity'
+import { useAuth } from '../App'
 import Header from './Header'
 import Column from './Column'
 import AddCardModal from './AddCardModal'
@@ -11,6 +13,7 @@ import CardDetailModal from './CardDetailModal'
 import FilterBar from './FilterBar'
 import AddLaneForm from './AddLaneForm'
 import BulkActionBar from './BulkActionBar'
+import ActivityFeed from './ActivityFeed'
 
 /**
  * The main board view.
@@ -39,6 +42,8 @@ export default function Board() {
     handleBulkUpdate,
   } = useBoard()
 
+  const { user } = useAuth()
+  const { activities, logMove, toggleReaction } = useActivity()
   const { activeFilters, setActiveFilters, filteredCards } = useFilters(board.cards)
 
   const bulk = useBulkSelect()
@@ -57,6 +62,24 @@ export default function Board() {
       return col.cardIds.filter((id) => id in filteredCards)
     }),
   [board.columnOrder, board.columns, filteredCards])
+
+  // Activity panel open/collapsed state
+  const [activityOpen, setActivityOpen] = useState(true)
+
+  // Wrap handleMoveCard to log cross-column moves to the activity feed
+  const handleMoveCardWithLog = useCallback((cardId, targetColumnId, targetIndex) => {
+    const card = board.cards[cardId]
+    if (card && card.columnId !== targetColumnId) {
+      logMove({
+        cardTitle: card.title,
+        cardId,
+        fromColumn: board.columns[card.columnId]?.title ?? card.columnId,
+        toColumn: board.columns[targetColumnId]?.title ?? targetColumnId,
+        userId: user?.id ?? 'unknown',
+      })
+    }
+    handleMoveCard(cardId, targetColumnId, targetIndex)
+  }, [board.cards, board.columns, user, logMove, handleMoveCard])
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -98,41 +121,56 @@ export default function Board() {
       <FilterBar
         activeFilters={activeFilters}
         onChange={setActiveFilters}
+        onToggleActivity={() => setActivityOpen((p) => !p)}
       />
 
-      {/* Columns */}
-      <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
-        {board.columnOrder.map((colId) => {
-          const column = board.columns[colId]
-          if (!column) return null
-          const visibleCardIds = column.cardIds.filter((id) => id in filteredCards)
-          const isDefault = colId in INITIAL_BOARD.columns
-          return (
-            <Column
-              key={colId}
-              column={column}
-              cards={board.cards}
-              filteredCardIds={visibleCardIds}
-              isFiltering={countActiveFilters(activeFilters) > 0}
-              onAddCard={setAddingToColumn}
-              onViewCard={setViewingCardId}
-              onDeleteCard={handleDeleteCard}
-              onMoveCard={handleMoveCard}
-              onDeleteLane={isDefault ? undefined : handleDeleteLane}
-              isSelecting={bulk.isSelecting}
-              isSelected={bulk.isSelected}
-              onSelectCard={(cardId, e) => e.shiftKey
-                ? bulk.shiftSelectRange(cardId, allVisibleIds)
-                : bulk.toggleCard(cardId)
-              }
-            />
-          )
-        })}
+      {/* Main content: columns + activity feed */}
+      <div className="flex flex-1 min-h-0">
 
-        {/* Add lane */}
-        <div className="shrink-0 w-72">
-          <AddLaneForm onAddLane={addLane} />
+        {/* Columns */}
+        <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
+          {board.columnOrder.map((colId) => {
+            const column = board.columns[colId]
+            if (!column) return null
+            const visibleCardIds = column.cardIds.filter((id) => id in filteredCards)
+            const isDefault = colId in INITIAL_BOARD.columns
+            return (
+              <Column
+                key={colId}
+                column={column}
+                cards={board.cards}
+                filteredCardIds={visibleCardIds}
+                isFiltering={countActiveFilters(activeFilters) > 0}
+                onAddCard={setAddingToColumn}
+                onViewCard={setViewingCardId}
+                onDeleteCard={handleDeleteCard}
+                onMoveCard={handleMoveCardWithLog}
+                onDeleteLane={isDefault ? undefined : handleDeleteLane}
+                isSelecting={bulk.isSelecting}
+                isSelected={bulk.isSelected}
+                onSelectCard={(cardId, e) => e.shiftKey
+                  ? bulk.shiftSelectRange(cardId, allVisibleIds)
+                  : bulk.toggleCard(cardId)
+                }
+              />
+            )
+          })}
+
+          {/* Add lane */}
+          <div className="shrink-0 w-72">
+            <AddLaneForm onAddLane={addLane} />
+          </div>
         </div>
+
+        {/* Activity feed */}
+        <ActivityFeed
+          activities={activities}
+          currentUserId={user?.id ?? ''}
+          onReact={(activityId, emoji) => toggleReaction(activityId, emoji, user?.id ?? '')}
+          isOpen={activityOpen}
+          onToggle={() => setActivityOpen((p) => !p)}
+        />
+
       </div>
 
       {/* Add card modal */}
@@ -155,6 +193,7 @@ export default function Board() {
           setBoard={setBoard}
           onSave={handleUpdateCard}
           onClose={() => setViewingCardId(null)}
+          onViewCard={setViewingCardId}
         />
       )}
 

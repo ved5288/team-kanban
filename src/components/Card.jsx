@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 import { timeAgo } from '../utils/time'
 import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
@@ -24,24 +24,37 @@ const PRIORITY_STYLES = {
  *  onSelect    - (cardId, e) => void: called on click during selection mode
  */
 export default function Card({ card, onView, isSelecting = false, isSelected = false, onSelect }) {
-  const { id, title, description, priority, assignee, createdAt, color, dueDate } = card
+  const { id, title, description, priority, assignee, createdAt, color, dueDate, parentCardId, childCardIds } = card
+  const hasParent = !!parentCardId
+  const childCount = (childCardIds ?? []).length
   const [isDragging, setIsDragging] = useState(false)
+  const wasDragged = useRef(false)
 
   const handleDragStart = (e) => {
     if (isSelecting) { e.preventDefault(); return }
     e.dataTransfer.setData('text/plain', id)
     e.dataTransfer.effectAllowed = 'move'
     setIsDragging(true)
+    wasDragged.current = true
   }
 
-  const handleDragEnd = () => setIsDragging(false)
+  const handleDragEnd = () => {
+    setIsDragging(false)
+    requestAnimationFrame(() => { wasDragged.current = false })
+  }
+
+  const handleClick = (e) => {
+    if (isSelecting) { onSelect?.(id, e); return }
+    if (wasDragged.current) return
+    onView(id)
+  }
 
   return (
     <div
       draggable={!isSelecting}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onClick={(e) => isSelecting ? onSelect?.(id, e) : null}
+      onClick={handleClick}
       className={`bg-white rounded-lg border shadow-sm transition-all overflow-hidden
                  ${isSelecting
                    ? `cursor-pointer ${isSelected
@@ -70,14 +83,10 @@ export default function Card({ card, onView, isSelecting = false, isSelected = f
             <span className="text-sm font-semibold text-gray-800 leading-snug">{title}</span>
           </div>
         ) : (
-          /* Normal mode: clickable title */
-          <button
-            onClick={() => onView(id)}
-            className="block w-full text-left text-sm font-semibold text-gray-800 leading-snug mb-2
-                       hover:text-indigo-600 transition-colors"
-          >
+          /* Normal mode: title text */
+          <p className="text-sm font-semibold text-gray-800 leading-snug mb-2">
             {title}
-          </button>
+          </p>
         )}
 
         {/* Description (truncated) */}
@@ -100,6 +109,22 @@ export default function Card({ card, onView, isSelecting = false, isSelected = f
             </div>
           )
         })()}
+
+        {/* Parent/child link indicators */}
+        {(hasParent || childCount > 0) && (
+          <div className="flex items-center gap-1.5 mb-2">
+            {hasParent && (
+              <span className="inline-flex items-center gap-1 text-xs text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full font-medium">
+                ↑ Parent
+              </span>
+            )}
+            {childCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
+                ↓ {childCount} {childCount === 1 ? 'child' : 'children'}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Footer: priority + assignee + time */}
         <div className="flex items-center justify-between gap-2">
