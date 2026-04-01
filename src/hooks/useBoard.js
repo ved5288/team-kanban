@@ -79,6 +79,19 @@ export function useBoard() {
 
       const { [cardId]: _removed, ...remainingCards } = prev.cards
 
+      // Clean up parent/child links referencing the deleted card
+      if (card.parentCardId && remainingCards[card.parentCardId]) {
+        remainingCards[card.parentCardId] = {
+          ...remainingCards[card.parentCardId],
+          childCardIds: (remainingCards[card.parentCardId].childCardIds ?? []).filter((id) => id !== cardId),
+        }
+      }
+      for (const childId of (card.childCardIds ?? [])) {
+        if (remainingCards[childId]) {
+          remainingCards[childId] = { ...remainingCards[childId], parentCardId: null }
+        }
+      }
+
       return {
         ...prev,
         cards: remainingCards,
@@ -198,7 +211,24 @@ export function useBoard() {
       if (!col) return prev
 
       const remainingCards = { ...prev.cards }
+      const deletedIds = new Set(col.cardIds)
       for (const cardId of col.cardIds) {
+        const card = remainingCards[cardId]
+        if (card) {
+          // Remove this card from its parent's childCardIds
+          if (card.parentCardId && remainingCards[card.parentCardId] && !deletedIds.has(card.parentCardId)) {
+            remainingCards[card.parentCardId] = {
+              ...remainingCards[card.parentCardId],
+              childCardIds: (remainingCards[card.parentCardId].childCardIds ?? []).filter((id) => id !== cardId),
+            }
+          }
+          // Clear parentCardId from children that survive
+          for (const childId of (card.childCardIds ?? [])) {
+            if (remainingCards[childId] && !deletedIds.has(childId)) {
+              remainingCards[childId] = { ...remainingCards[childId], parentCardId: null }
+            }
+          }
+        }
         delete remainingCards[cardId]
       }
 

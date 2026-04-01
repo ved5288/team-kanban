@@ -21,7 +21,9 @@ const PRIORITY_STYLES = {
  *  onView    - (cardId) => void   called when the user clicks the card title or edit button
  */
 export default function Card({ card, onView }) {
-  const { id, title, description, priority, assignee, createdAt, color, dueDate } = card
+  const { id, title, description, priority, assignee, createdAt, color, dueDate, parentCardId, childCardIds } = card
+  const hasParent = !!parentCardId
+  const childCount = (childCardIds ?? []).length
   const [isDragging, setIsDragging] = useState(false)
 
   const handleDragStart = (e) => {
@@ -76,6 +78,22 @@ export default function Card({ card, onView }) {
             </div>
           )
         })()}
+
+        {/* Parent/child link indicators */}
+        {(hasParent || childCount > 0) && (
+          <div className="flex items-center gap-1.5 mb-2">
+            {hasParent && (
+              <span className="inline-flex items-center gap-1 text-xs text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full font-medium">
+                ↑ Parent
+              </span>
+            )}
+            {childCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
+                ↓ {childCount} {childCount === 1 ? 'child' : 'children'}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Footer: priority + assignee + time + edit button */}
         <div className="flex items-center justify-between gap-2">
