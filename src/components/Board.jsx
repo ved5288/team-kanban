@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { INITIAL_BOARD } from '../data/mockData'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import Header from './Header'
@@ -26,6 +26,17 @@ export default function Board() {
 
   // Which card's detail popup is open (null = closed, string = cardId)
   const [viewingCardId, setViewingCardId] = useState(null)
+
+  // "Add lane" inline input state
+  const [isAddingLane, setIsAddingLane] = useState(false)
+  const [newLaneName, setNewLaneName] = useState('')
+  const newLaneInputRef = useRef(null)
+
+  useEffect(() => {
+    if (isAddingLane && newLaneInputRef.current) {
+      newLaneInputRef.current.focus()
+    }
+  }, [isAddingLane])
 
   // ── Add a new card ──────────────────────────────────────────────────────────
 
@@ -115,6 +126,66 @@ export default function Board() {
     })
   }
 
+  // ── Add a new lane ──────────────────────────────────────────────────────────
+
+  const handleAddLane = () => {
+    const name = newLaneName.trim()
+    if (!name) return
+
+    // Prevent duplicate lane names (case-insensitive)
+    const duplicate = Object.values(board.columns).some(
+      (col) => col.title.toLowerCase() === name.toLowerCase()
+    )
+    if (duplicate) {
+      alert(`A lane named "${name}" already exists.`)
+      return
+    }
+
+    const colId = `col-${Date.now()}`
+    setBoard((prev) => ({
+      ...prev,
+      columns: {
+        ...prev.columns,
+        [colId]: { id: colId, title: name, cardIds: [] },
+      },
+      columnOrder: [...prev.columnOrder, colId],
+    }))
+    setNewLaneName('')
+    setIsAddingLane(false)
+  }
+
+  // ── Delete a lane ─────────────────────────────────────────────────────────
+
+  const handleDeleteLane = (columnId) => {
+    const column = board.columns[columnId]
+    if (!column) return
+
+    const cardCount = column.cardIds.length
+    const message = cardCount > 0
+      ? `Delete "${column.title}" and its ${cardCount} card${cardCount > 1 ? 's' : ''}? This cannot be undone.`
+      : `Delete the empty lane "${column.title}"?`
+
+    if (!window.confirm(message)) return
+
+    setBoard((prev) => {
+      // Remove cards that belong to this column
+      const remainingCards = { ...prev.cards }
+      for (const cardId of column.cardIds) {
+        delete remainingCards[cardId]
+      }
+
+      // Remove the column itself
+      const { [columnId]: _removed, ...remainingColumns } = prev.columns
+
+      return {
+        ...prev,
+        cards: remainingCards,
+        columns: remainingColumns,
+        columnOrder: prev.columnOrder.filter((id) => id !== columnId),
+      }
+    })
+  }
+
   // ── Reset board (dev helper) ────────────────────────────────────────────────
 
   const resetBoard = () => {
@@ -149,6 +220,7 @@ export default function Board() {
         {board.columnOrder.map((colId) => {
           const column = board.columns[colId]
           if (!column) return null
+          const isDefault = colId in INITIAL_BOARD.columns
           return (
             <Column
               key={colId}
@@ -156,15 +228,64 @@ export default function Board() {
               cards={board.cards}
               onAddCard={setAddingToColumn}
               onViewCard={setViewingCardId}
+              onDeleteCard={handleDeleteCard}
+              onDeleteLane={isDefault ? undefined : handleDeleteLane}
             />
           )
         })}
+
+        {/* Add lane */}
+        <div className="shrink-0 w-72">
+          {isAddingLane ? (
+            <div className="bg-gray-100 rounded-xl border border-gray-200 p-3">
+              <input
+                ref={newLaneInputRef}
+                type="text"
+                value={newLaneName}
+                onChange={(e) => setNewLaneName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddLane()
+                  if (e.key === 'Escape') { setIsAddingLane(false); setNewLaneName('') }
+                }}
+                placeholder="Enter lane name..."
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={handleAddLane}
+                  className="flex-1 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600
+                             hover:bg-indigo-700 rounded-lg transition-colors"
+                >
+                  Add Lane
+                </button>
+                <button
+                  onClick={() => { setIsAddingLane(false); setNewLaneName('') }}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700
+                             bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAddingLane(true)}
+              className="w-full py-3 text-sm font-medium text-gray-500 hover:text-indigo-700
+                         bg-gray-100 hover:bg-white border-2 border-dashed border-gray-300
+                         hover:border-indigo-300 rounded-xl transition-all"
+            >
+              + Add lane
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Add card modal */}
       {addingToColumn && (
         <AddCardModal
           defaultColumnId={addingToColumn}
+          columns={board.columnOrder.map((id) => board.columns[id]).filter(Boolean)}
           onSave={handleAddCard}
           onClose={() => setAddingToColumn(null)}
         />
