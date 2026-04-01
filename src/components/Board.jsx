@@ -12,6 +12,7 @@ import AddCardModal from './AddCardModal'
 import CardDetailModal from './CardDetailModal'
 import FilterBar from './FilterBar'
 import AddLaneForm from './AddLaneForm'
+import TableView from './TableView'
 import BulkActionBar from './BulkActionBar'
 import ActivityFeed from './ActivityFeed'
 
@@ -45,6 +46,9 @@ export default function Board() {
   const { user } = useAuth()
   const { activities, logMove, toggleReaction } = useActivity()
   const { activeFilters, setActiveFilters, filteredCards } = useFilters(board.cards)
+
+  // Current view mode: 'board' or 'table'
+  const [viewMode, setViewMode] = useState('board')
 
   const bulk = useBulkSelect()
 
@@ -117,50 +121,65 @@ export default function Board() {
         </div>
       </div>
 
-      {/* Filter bar */}
+      {/* Filter bar + view toggle + activity toggle */}
       <FilterBar
         activeFilters={activeFilters}
         onChange={setActiveFilters}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onToggleActivity={() => setActivityOpen((p) => !p)}
       />
 
-      {/* Main content: columns + activity feed */}
+      {/* Main content: view + activity feed */}
       <div className="flex flex-1 min-h-0">
 
-        {/* Columns */}
-        <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
-          {board.columnOrder.map((colId) => {
-            const column = board.columns[colId]
-            if (!column) return null
-            const visibleCardIds = column.cardIds.filter((id) => id in filteredCards)
-            const isDefault = colId in INITIAL_BOARD.columns
-            return (
-              <Column
-                key={colId}
-                column={column}
-                cards={board.cards}
-                filteredCardIds={visibleCardIds}
-                isFiltering={countActiveFilters(activeFilters) > 0}
-                onAddCard={setAddingToColumn}
-                onViewCard={setViewingCardId}
-                onDeleteCard={handleDeleteCard}
-                onMoveCard={handleMoveCardWithLog}
-                onDeleteLane={isDefault ? undefined : handleDeleteLane}
-                isSelecting={bulk.isSelecting}
-                isSelected={bulk.isSelected}
-                onSelectCard={(cardId, e) => e.shiftKey
-                  ? bulk.shiftSelectRange(cardId, allVisibleIds)
-                  : bulk.toggleCard(cardId)
-                }
-              />
-            )
-          })}
+        {/* Board view */}
+        {viewMode === 'board' && (
+          <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
+            {board.columnOrder.map((colId) => {
+              const column = board.columns[colId]
+              if (!column) return null
+              const visibleCardIds = column.cardIds.filter((id) => id in filteredCards)
+              const isDefault = colId in INITIAL_BOARD.columns
+              return (
+                <Column
+                  key={colId}
+                  column={column}
+                  cards={board.cards}
+                  filteredCardIds={visibleCardIds}
+                  isFiltering={countActiveFilters(activeFilters) > 0}
+                  onAddCard={setAddingToColumn}
+                  onViewCard={setViewingCardId}
+                  onDeleteCard={handleDeleteCard}
+                  onMoveCard={handleMoveCardWithLog}
+                  onDeleteLane={isDefault ? undefined : handleDeleteLane}
+                  isSelecting={bulk.isSelecting}
+                  isSelected={bulk.isSelected}
+                  onSelectCard={(cardId, e) => e.shiftKey
+                    ? bulk.shiftSelectRange(cardId, allVisibleIds)
+                    : bulk.toggleCard(cardId)
+                  }
+                />
+              )
+            })}
 
-          {/* Add lane */}
-          <div className="shrink-0 w-72">
-            <AddLaneForm onAddLane={addLane} />
+            {/* Add lane */}
+            <div className="shrink-0 w-72">
+              <AddLaneForm onAddLane={addLane} />
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Table view */}
+        {viewMode === 'table' && (
+          <TableView
+            filteredCards={filteredCards}
+            columns={board.columns}
+            columnOrder={board.columnOrder}
+            onViewCard={setViewingCardId}
+            onAddCard={() => setAddingToColumn(board.columnOrder[0])}
+          />
+        )}
 
         {/* Activity feed */}
         <ActivityFeed
