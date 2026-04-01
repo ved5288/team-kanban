@@ -95,13 +95,26 @@ export default function CardDetailModal({ card, columns, columnOrder, onSave, on
           <h2 className="text-sm font-bold text-white uppercase tracking-wide">
             {columns[columnId]?.title ?? columnId}
           </h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="text-white/70 hover:text-white transition-colors text-xl leading-none"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Open in new window */}
+            <a
+              href={`/card/${card.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open in new window"
+              className="text-white/70 hover:text-white transition-colors"
+              title="Open in new window"
+            >
+              ↗
+            </a>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="text-white/70 hover:text-white transition-colors text-xl leading-none"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Form */}

@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/Login'
 import Board from './components/Board'
+import CardDetail from './components/CardDetail'
 
 // ─── Auth Context ──────────────────────────────────────────────────────────────
 // This context makes the current user available anywhere in the component tree
@@ -49,6 +50,12 @@ export default function App() {
           <Route
             path="/"
             element={user ? <Board /> : <Navigate to="/login" replace />}
+          />
+
+          {/* /card/:id → full card detail page, opened in a new window from the popup */}
+          <Route
+            path="/card/:id"
+            element={user ? <CardDetail /> : <Navigate to="/login" replace />}
           />
 
           {/* Catch-all: redirect unknown URLs to home */}
