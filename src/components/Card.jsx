@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
+import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
 
 // ─── Priority badge styling ───────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ function timeAgo(isoString) {
   return new Date(isoString).toLocaleDateString()
 }
 
+
 // ─── Card Component ───────────────────────────────────────────────────────────
 
 /**
@@ -30,7 +32,7 @@ function timeAgo(isoString) {
  *  onDelete  - (cardId) => void   called when the user deletes the card
  */
 export default function Card({ card, onDelete }) {
-  const { id, title, description, priority, assignee, createdAt } = card
+  const { id, title, description, priority, assignee, createdAt, dueDate } = card
 
   return (
     <div
@@ -52,6 +54,20 @@ export default function Card({ card, onDelete }) {
           {description}
         </p>
       )}
+
+      {/* Due date badge */}
+      {dueDate && (() => {
+        const status = getDueDateStatus(dueDate)
+        return (
+          <div className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${DUE_DATE_STYLES[status]}`}>
+            <span className="leading-none">📅</span>
+            <span>
+              {status === 'overdue' ? 'Overdue · ' : 'Due · '}
+              {formatDueDate(dueDate)}
+            </span>
+          </div>
+        )
+      })()}
 
       {/* Footer: priority + assignee + time */}
       <div className="flex items-center justify-between gap-2">
