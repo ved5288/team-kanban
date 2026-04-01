@@ -119,21 +119,37 @@ function ActivityItem({ entry, currentUserId, onReact }) {
           {/* Existing reactions */}
           {hasReactions && (
             <div className="flex flex-wrap gap-1 mt-1.5">
-              {Object.entries(entry.reactions).map(([emoji, users]) =>
-                users.length > 0 && (
-                  <button
-                    key={emoji}
-                    onClick={() => onReact(entry.id, emoji)}
-                    className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
-                      users.includes(currentUserId)
-                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {emoji} <span>{users.length}</span>
-                  </button>
+              {Object.entries(entry.reactions).map(([emoji, users]) => {
+                if (users.length === 0) return null
+                const visibleNames = users.slice(0, 3).map((uid) => getUserName(uid))
+                const extra = users.length - 3
+                const tooltipText = extra > 0
+                  ? `${visibleNames.join(', ')} +${extra}`
+                  : visibleNames.join(', ')
+                return (
+                  <div key={emoji} className="relative group/reaction">
+                    <button
+                      onClick={() => onReact(entry.id, emoji)}
+                      className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
+                        users.includes(currentUserId)
+                          ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {emoji} <span>{users.length}</span>
+                    </button>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30
+                                    bg-gray-800 text-white text-xs rounded px-2 py-1
+                                    whitespace-nowrap pointer-events-none
+                                    opacity-0 group-hover/reaction:opacity-100 transition-opacity">
+                      {tooltipText}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2
+                                      border-4 border-transparent border-t-gray-800" />
+                    </div>
+                  </div>
                 )
-              )}
+              })}
             </div>
           )}
         </div>

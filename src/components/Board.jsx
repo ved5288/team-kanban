@@ -90,7 +90,7 @@ export default function Board() {
       <FilterBar
         activeFilters={activeFilters}
         onChange={setActiveFilters}
-        onOpenActivity={() => setActivityOpen(true)}
+        onOpenActivity={() => setActivityOpen((p) => !p)}
       />
 
       {/* Main content: columns + activity feed */}
