@@ -2,6 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { INITIAL_BOARD } from '../data/mockData'
 import { getUserName, getUserInitials, getUserColor } from '../data/users'
+import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
 
 // ─── Priority styles ──────────────────────────────────────────────────────────
 
@@ -120,23 +121,13 @@ export default function CardDetail() {
 
               {/* Due date badge */}
               {dueDate && (() => {
-                const today = new Date()
-                today.setHours(0, 0, 0, 0)
-                const due = new Date(dueDate + 'T00:00:00')
-                const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24))
-                const isOverdue = diffDays < 0
-                const isSoon    = diffDays >= 0 && diffDays <= 3
-                const badgeStyle = isOverdue
-                  ? 'bg-red-50 text-red-600 border border-red-200'
-                  : isSoon
-                    ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                    : 'bg-gray-50 text-gray-500 border border-gray-200'
+                const status = getDueDateStatus(dueDate)
                 return (
-                  <span className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1.5 ${badgeStyle}`}>
+                  <span className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1.5 ${DUE_DATE_STYLES[status]}`}>
                     <span>📅</span>
                     <span>
-                      {isOverdue ? 'Overdue · ' : 'Due · '}
-                      {due.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {status === 'overdue' ? 'Overdue · ' : 'Due · '}
+                      {formatDueDate(dueDate, { month: 'long' })}
                     </span>
                   </span>
                 )
@@ -187,17 +178,14 @@ export default function CardDetail() {
 
               {/* Due date */}
               {dueDate && (() => {
-                const today = new Date()
-                today.setHours(0, 0, 0, 0)
-                const due     = new Date(dueDate + 'T00:00:00')
-                const overdue = due < today
+                const overdue = getDueDateStatus(dueDate) === 'overdue'
                 return (
                   <div className="text-right">
                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
                       Due Date
                     </h2>
                     <p className={`text-sm font-medium ${overdue ? 'text-red-600' : 'text-gray-700'}`}>
-                      {due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {formatDueDate(dueDate)}
                     </p>
                     {overdue && <p className="text-xs text-red-400 mt-0.5">Overdue</p>}
                   </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -19,14 +19,12 @@ const DAY_HEADERS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
  *  placeholder - text shown when no date is selected
  */
 export default function DatePicker({ value, onChange, placeholder = 'Set due date' }) {
-  // ── Today (midnight, local) ─────────────────────────────────────────────────
-  const getToday = () => {
+  // ── Today (midnight, local) — memoised so it's stable across renders ─────────
+  const today = useMemo(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     return d
-  }
-
-  const today = getToday()
+  }, [])
 
   // ── State ───────────────────────────────────────────────────────────────────
   const [open, setOpen]           = useState(false)
@@ -49,10 +47,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Set due dat
 
   // ── Auto-position dropdown (runs before paint to avoid flash) ───────────────
   useLayoutEffect(() => {
-    if (!open || !dropdownRef.current || !containerRef.current) {
-      setDropStyle({})
-      return
-    }
+    if (!open || !dropdownRef.current || !containerRef.current) return
 
     const trigger  = containerRef.current.getBoundingClientRect()
     const drop     = dropdownRef.current.getBoundingClientRect()
