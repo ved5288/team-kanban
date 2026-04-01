@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { USERS, getUserColor, getUserInitials, getUserName } from '../data/users'
 import CardComments from './CardComments'
 import CardChecklists from './checklists/CardChecklists'
+import CardLinks from './CardLinks'
 
 const PRIORITIES = ['High', 'Medium', 'Low']
 
@@ -44,8 +45,9 @@ function timeAgo(isoString) {
  *  setBoard    - board state setter (passed to CardComments)
  *  onSave      - (updatedCard) => void
  *  onClose     - () => void
+ *  onViewCard  - (cardId) => void  — navigate to another card's detail
  */
-export default function CardDetailModal({ card, columns, columnOrder, board, setBoard, onSave, onClose }) {
+export default function CardDetailModal({ card, columns, columnOrder, board, setBoard, onSave, onClose, onViewCard }) {
   const [isEditing, setIsEditing] = useState(false)
   const [title,       setTitle]       = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
@@ -172,6 +174,16 @@ export default function CardDetailModal({ card, columns, columnOrder, board, set
 
               {/* Checklists */}
               <CardChecklists cardId={card.id} board={board} setBoard={setBoard} />
+
+              <hr className="border-gray-100" />
+
+              {/* Card links */}
+              <CardLinks
+                card={board.cards[card.id] ?? card}
+                board={board}
+                setBoard={setBoard}
+                onViewCard={onViewCard}
+              />
 
               <hr className="border-gray-100" />
 
