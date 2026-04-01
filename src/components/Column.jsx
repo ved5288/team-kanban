@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import Card from './Card'
+import { getCardChecklistSummary } from './checklists/checklistHelpers'
 
 // Column accent colours (header bar at the top)
 const COLUMN_COLORS = {
@@ -64,6 +65,21 @@ export default function Column({ column, cards, filteredCardIds, isFiltering, on
   // Use filtered IDs when provided, fall back to all IDs for backward compatibility
   const columnCards = (filteredCardIds ?? cardIds).map((cid) => cards[cid]).filter(Boolean)
   const accentColor = getColumnColor(id)
+
+  // Aggregate checklist progress across all cards in this column
+  const columnChecklistProgress = (() => {
+    let total = 0
+    let completed = 0
+    for (const card of columnCards) {
+      const summary = getCardChecklistSummary(card)
+      if (summary) {
+        total += summary.total
+        completed += summary.completed
+      }
+    }
+    if (total === 0) return null
+    return { total, completed }
+  })()
 
   // Track where the drop indicator should appear: index in the card list
   const [dropIndex, setDropIndex] = useState(null)
@@ -149,6 +165,18 @@ export default function Column({ column, cards, filteredCardIds, isFiltering, on
             <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full font-medium">
               {isFiltering ? `${columnCards.length}/${cardIds.length}` : columnCards.length}
             </span>
+            {columnChecklistProgress && (
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  columnChecklistProgress.completed === columnChecklistProgress.total
+                    ? 'bg-green-400/30 text-white'
+                    : 'bg-white/15 text-white/80'
+                }`}
+                title={`${columnChecklistProgress.completed}/${columnChecklistProgress.total} checklist items done`}
+              >
+                {columnChecklistProgress.completed}/{columnChecklistProgress.total}
+              </span>
+            )}
             {onDeleteLane && (
               <button
                 onClick={() => onDeleteLane(id)}
