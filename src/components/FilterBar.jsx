@@ -59,15 +59,19 @@ function Chip({ label, onRemove }) {
  * Board-level filter bar.
  *
  * Props:
- *  activeFilters - { priority: string[], assignees: string[], dateFilter: null|object }
- *  onChange      - (newFilters) => void  receives the full updated filters object
+ *  activeFilters    - { priority: string[], assignees: string[], dateFilter: null|object, labels: string[] }
+ *  onChange         - (newFilters) => void  receives the full updated filters object
+ *  viewMode         - 'board' | 'table'
+ *  onViewModeChange - (mode) => void
+ *  onToggleActivity - () => void
+ *  labels           - Label[]  board-wide label definitions (for the labels dropdown)
  */
-export default function FilterBar({ activeFilters, onChange, onToggleActivity }) {
+export default function FilterBar({ activeFilters, onChange, viewMode, onViewModeChange, onToggleActivity, labels = [] }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const { priority, assignees, dateFilter } = activeFilters
+  const { priority, assignees, dateFilter, labels: selectedLabels = [] } = activeFilters
   const activeCount = countActiveFilters(activeFilters)
 
-  const clearAll = () => onChange({ priority: [], assignees: [], dateFilter: null })
+  const clearAll = () => onChange({ priority: [], assignees: [], dateFilter: null, labels: [] })
 
   const removePriority = (p) =>
     onChange({ ...activeFilters, priority: priority.filter((v) => v !== p) })
@@ -76,6 +80,9 @@ export default function FilterBar({ activeFilters, onChange, onToggleActivity })
     onChange({ ...activeFilters, assignees: assignees.filter((v) => v !== uid) })
 
   const clearDate = () => onChange({ ...activeFilters, dateFilter: null })
+
+  const removeLabel = (lid) =>
+    onChange({ ...activeFilters, labels: selectedLabels.filter((v) => v !== lid) })
 
   return (
     <div className="bg-white border-b border-gray-200">
@@ -122,32 +129,70 @@ export default function FilterBar({ activeFilters, onChange, onToggleActivity })
             {dateFilter && (
               <Chip label={describeDateFilter(dateFilter)} onRemove={clearDate} />
             )}
+            {selectedLabels.map((lid) => {
+              const label = labels.find((l) => l.id === lid)
+              if (!label) return null
+              return (
+                <Chip key={lid} label={`${label.symbol} ${label.name}`} onRemove={() => removeLabel(lid)} />
+              )
+            })}
           </div>
         )}
 
-        {/* Clear all — right-aligned */}
-        {activeCount > 0 && (
-          <button
-            onClick={clearAll}
-            className="ml-auto text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0"
-          >
-            Clear all filters
-          </button>
-        )}
+        {/* Right side: clear all + view toggle + activity */}
+        <div className="ml-auto flex items-center gap-3">
+          {activeCount > 0 && (
+            <button
+              onClick={clearAll}
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0"
+            >
+              Clear all filters
+            </button>
+          )}
 
-        {/* Activity tab — far right */}
-        <button
-          onClick={onToggleActivity}
-          className={`flex items-center gap-2 text-sm font-medium text-gray-600
-                     hover:text-indigo-600 transition-colors shrink-0
-                     ${activeCount === 0 ? 'ml-auto' : ''}`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Activity
-        </button>
+          {/* View toggle */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => onViewModeChange('board')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all
+                         ${viewMode === 'board'
+                           ? 'bg-white text-gray-900 shadow-sm'
+                           : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              Board
+            </button>
+            <button
+              onClick={() => onViewModeChange('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all
+                         ${viewMode === 'table'
+                           ? 'bg-white text-gray-900 shadow-sm'
+                           : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M3 10h18M3 14h18M3 6h18M3 18h18" />
+              </svg>
+              Table
+            </button>
+          </div>
+
+          {/* Activity tab */}
+          <button
+            onClick={onToggleActivity}
+            className="flex items-center gap-2 text-sm font-medium text-gray-600
+                       hover:text-indigo-600 transition-colors shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Activity
+          </button>
+        </div>
       </div>
 
       {/* ── Expanded filter controls ── */}
@@ -195,6 +240,28 @@ export default function FilterBar({ activeFilters, onChange, onToggleActivity })
             value={dateFilter}
             onChange={(val) => onChange({ ...activeFilters, dateFilter: val })}
           />
+
+          {/* Labels filter */}
+          {labels.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Labels</span>
+              <MultiSelectDropdown
+                label="Labels"
+                options={labels.map((l) => ({ value: l.id, label: l.name }))}
+                selected={selectedLabels}
+                onChange={(val) => onChange({ ...activeFilters, labels: val })}
+                renderOption={(opt) => {
+                  const label = labels.find((l) => l.id === opt.value)
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">{label?.symbol}</span>
+                      <span className="text-sm text-gray-700">{opt.label}</span>
+                    </div>
+                  )
+                }}
+              />
+            </div>
+          )}
 
         </div>
       )}

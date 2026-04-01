@@ -6,6 +6,7 @@ export function useFilters(cards) {
     priority:   [],
     assignees:  [],
     dateFilter: null,
+    labels:     [],
   })
 
   const filteredCards = useMemo(

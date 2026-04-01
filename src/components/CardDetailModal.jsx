@@ -3,6 +3,7 @@ import { USERS, getUserColor, getUserInitials, getUserName } from '../data/users
 import CardComments from './CardComments'
 import CardChecklists from './checklists/CardChecklists'
 import CardLinks from './CardLinks'
+import LabelsModal from './LabelsModal'
 
 const PRIORITIES = ['High', 'Medium', 'Low']
 
@@ -46,14 +47,18 @@ function timeAgo(isoString) {
  *  onSave      - (updatedCard) => void
  *  onClose     - () => void
  *  onViewCard  - (cardId) => void  — navigate to another card's detail
+ *  labels      - Label[]   board-wide label definitions
+ *  onAddLabel  - (name, symbol) => void  create a new board-level label
  */
-export default function CardDetailModal({ card, columns, columnOrder, board, setBoard, onSave, onClose, onViewCard }) {
+export default function CardDetailModal({ card, columns, columnOrder, board, setBoard, onSave, onClose, onViewCard, labels = [], onAddLabel }) {
   const [isEditing, setIsEditing] = useState(false)
   const [title,       setTitle]       = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
   const [priority,    setPriority]    = useState(card.priority)
   const [assignee,    setAssignee]    = useState(card.assignee)
   const [columnId,    setColumnId]    = useState(card.columnId)
+  const [labelIds,    setLabelIds]    = useState(card.labelIds ?? [])
+  const [labelsOpen,  setLabelsOpen]  = useState(false)
 
   // Header styling: use card colour when set, grey otherwise
   const hasColor  = !!card.color
@@ -84,6 +89,7 @@ export default function CardDetailModal({ card, columns, columnOrder, board, set
       priority,
       assignee,
       columnId,
+      labelIds,
     })
     setIsEditing(false)
   }
@@ -94,7 +100,21 @@ export default function CardDetailModal({ card, columns, columnOrder, board, set
     setPriority(card.priority)
     setAssignee(card.assignee)
     setColumnId(card.columnId)
+    setLabelIds(card.labelIds ?? [])
     setIsEditing(false)
+  }
+
+  const handleToggleLabel = (labelId) => {
+    setLabelIds((prev) =>
+      prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
+    )
+    // Persist immediately so the board reflects the change right away
+    onSave({
+      ...card,
+      labelIds: (card.labelIds ?? []).includes(labelId)
+        ? (card.labelIds ?? []).filter((id) => id !== labelId)
+        : [...(card.labelIds ?? []), labelId],
+    })
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -168,6 +188,50 @@ export default function CardDetailModal({ card, columns, columnOrder, board, set
                   <span className="text-gray-600">{getUserName(card.assignee)}</span>
                 </div>
                 <span title={formatDate(card.createdAt)}>Created {timeAgo(card.createdAt)}</span>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Labels */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Labels</p>
+                <div className="relative flex items-center flex-wrap gap-1.5">
+                  {labelIds.map((lid) => {
+                    const label = labels.find((l) => l.id === lid)
+                    if (!label) return null
+                    return (
+                      <button
+                        key={lid}
+                        onClick={(e) => { e.stopPropagation(); setLabelsOpen(true) }}
+                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5
+                                   bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full
+                                   hover:bg-indigo-100 transition-colors"
+                      >
+                        <span className="text-sm leading-none">{label.symbol}</span>
+                        <span>{label.name}</span>
+                      </button>
+                    )
+                  })}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setLabelsOpen((v) => !v) }}
+                    className="inline-flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700
+                               px-2 py-0.5 border border-dashed border-indigo-300 rounded-full hover:border-indigo-500 transition-colors"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    {labelIds.length === 0 ? 'Add labels' : 'Edit'}
+                  </button>
+                  {labelsOpen && (
+                    <LabelsModal
+                      labels={labels}
+                      cardLabelIds={labelIds}
+                      onToggleLabel={handleToggleLabel}
+                      onAddLabel={onAddLabel}
+                      onClose={() => setLabelsOpen(false)}
+                    />
+                  )}
+                </div>
               </div>
 
               <hr className="border-gray-100" />
