@@ -32,10 +32,24 @@ function timeAgo(isoString) {
 export default function Card({ card, onDelete }) {
   const { id, title, description, priority, assignee, createdAt } = card
 
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+    // Add a slight delay so the dragged element gets a visual style
+    e.currentTarget.style.opacity = '0.4'
+  }
+
+  const handleDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1'
+  }
+
   return (
     <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm
-                 hover:shadow-md hover:border-gray-300 transition-all cursor-default group"
+                 hover:shadow-md hover:border-gray-300 transition-all cursor-grab active:cursor-grabbing group"
     >
       {/* Title — click to open the full card detail page */}
       <Link
