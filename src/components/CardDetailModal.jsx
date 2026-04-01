@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { USERS, getUserColor, getUserInitials, getUserName } from '../data/users'
 import CardComments from './CardComments'
 import CardLinks from './CardLinks'
+import CrossBoardLinks from './CrossBoardLinks'
 
 const PRIORITIES = ['High', 'Medium', 'Low']
 
@@ -37,16 +38,35 @@ function timeAgo(isoString) {
  * In-place popup modal for viewing and editing a card.
  *
  * Props:
- *  card        - the card data object
- *  columns     - full columns map from Board state
- *  columnOrder - ordered array of column IDs
- *  board       - full board state (passed to CardComments)
- *  setBoard    - board state setter (passed to CardComments)
- *  onSave      - (updatedCard) => void
- *  onClose     - () => void
- *  onViewCard  - (cardId) => void  — navigate to another card's detail
+ *  card             - the card data object
+ *  columns          - full columns map from Board state
+ *  columnOrder      - ordered array of column IDs
+ *  board            - full board state (passed to CardComments / CardLinks)
+ *  setBoard         - board state setter
+ *  onSave           - (updatedCard) => void
+ *  onClose          - () => void
+ *  onViewCard       - (cardId) => void  — navigate to another card's detail (required)
+ *  workspace        - full workspace object (for cross-board links)
+ *  boardId          - ID of the board this card lives on
+ *  onLinkExternal   - (fromCardId, fromBoardId, toCardId, toBoardId) => void
+ *  onUnlinkExternal - (fromCardId, fromBoardId, toCardId, toBoardId) => void
+ *  onSwitchAndView  - (boardId, cardId) => void
  */
-export default function CardDetailModal({ card, columns, columnOrder, board, setBoard, onSave, onClose, onViewCard }) {
+export default function CardDetailModal({
+  card,
+  columns,
+  columnOrder,
+  board,
+  setBoard,
+  onSave,
+  onClose,
+  onViewCard,
+  workspace,
+  boardId,
+  onLinkExternal,
+  onUnlinkExternal,
+  onSwitchAndView,
+}) {
   const [isEditing, setIsEditing] = useState(false)
   const [title,       setTitle]       = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
@@ -54,9 +74,12 @@ export default function CardDetailModal({ card, columns, columnOrder, board, set
   const [assignee,    setAssignee]    = useState(card.assignee)
   const [columnId,    setColumnId]    = useState(card.columnId)
 
+  // Always read the freshest card data from the board (card prop can be stale)
+  const liveCard = board.cards[card.id] ?? card
+
   // Header styling: use card colour when set, grey otherwise
-  const hasColor  = !!card.color
-  const headerBg  = hasColor ? card.color  : 'bg-gray-100'
+  const hasColor   = !!card.color
+  const headerBg   = hasColor ? card.color  : 'bg-gray-100'
   const headerText = hasColor ? 'text-white' : 'text-gray-800'
   const iconColor  = hasColor ? 'text-white/70 hover:text-white' : 'text-gray-400 hover:text-gray-700'
 
@@ -171,15 +194,30 @@ export default function CardDetailModal({ card, columns, columnOrder, board, set
 
               <hr className="border-gray-100" />
 
-              {/* Card links */}
+              {/* Same-board parent/child links */}
               <CardLinks
-                card={board.cards[card.id] ?? card}
+                card={liveCard}
                 board={board}
                 setBoard={setBoard}
                 onViewCard={onViewCard}
               />
 
               <hr className="border-gray-100" />
+
+              {/* Cross-board links */}
+              {workspace && (
+                <>
+                  <CrossBoardLinks
+                    card={liveCard}
+                    boardId={boardId}
+                    workspace={workspace}
+                    onLinkExternal={onLinkExternal}
+                    onUnlinkExternal={onUnlinkExternal}
+                    onSwitchAndView={onSwitchAndView}
+                  />
+                  <hr className="border-gray-100" />
+                </>
+              )}
 
               {/* Comments */}
               <CardComments cardId={card.id} board={board} setBoard={setBoard} />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { INITIAL_BOARD } from '../data/mockData'
 import { countActiveFilters } from '../utils/filterUtils'
-import { useBoard } from '../hooks/useBoard'
+import { useWorkspace } from '../hooks/useWorkspace'
 import { useFilters } from '../hooks/useFilters'
 import Header from './Header'
 import Column from './Column'
@@ -13,16 +13,15 @@ import AddLaneForm from './AddLaneForm'
 /**
  * The main board view.
  *
- * State is stored in localStorage so it persists across page reloads.
- * The board shape is:
+ * State now lives in useWorkspace (supports multiple boards).
+ * The board shape remains:
  *   { cards: {id → card}, columns: {id → column}, columnOrder: [id] }
- *
- * Key operations:
- *  - addCard:    adds a new card to a column
- *  - deleteCard: removes a card from board state
+ * but is now nested inside a workspace:
+ *   { activeBoardId, boards: { [id]: board } }
  */
 export default function Board() {
   const {
+    workspace,
     board,
     setBoard,
     handleAddCard,
@@ -32,15 +31,24 @@ export default function Board() {
     addLane,
     handleDeleteLane,
     resetBoard,
-  } = useBoard()
+    createBoard,
+    deleteBoard,
+    renameBoard,
+    switchBoard,
+    linkExternalCard,
+    unlinkExternalCard,
+  } = useWorkspace()
 
   const { activeFilters, setActiveFilters, filteredCards } = useFilters(board.cards)
 
-  // Which column's "Add card" was clicked (null = modal closed)
   const [addingToColumn, setAddingToColumn] = useState(null)
+  const [viewingCardId,  setViewingCardId]  = useState(null)
 
-  // Which card's detail popup is open (null = closed, string = cardId)
-  const [viewingCardId, setViewingCardId] = useState(null)
+  // Switch board and optionally open a card (used by cross-board link navigation)
+  const handleSwitchAndView = (boardId, cardId) => {
+    switchBoard(boardId)
+    setViewingCardId(cardId)
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -48,7 +56,13 @@ export default function Board() {
     <div className="h-screen flex flex-col bg-slate-100">
 
       {/* Top navigation */}
-      <Header />
+      <Header
+        workspace={workspace}
+        onSwitchBoard={switchBoard}
+        onCreateBoard={createBoard}
+        onRenameBoard={renameBoard}
+        onDeleteBoard={deleteBoard}
+      />
 
       {/* Board toolbar */}
       <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200">
@@ -119,6 +133,11 @@ export default function Board() {
           onSave={handleUpdateCard}
           onClose={() => setViewingCardId(null)}
           onViewCard={setViewingCardId}
+          workspace={workspace}
+          boardId={workspace.activeBoardId}
+          onLinkExternal={linkExternalCard}
+          onUnlinkExternal={unlinkExternalCard}
+          onSwitchAndView={handleSwitchAndView}
         />
       )}
 
