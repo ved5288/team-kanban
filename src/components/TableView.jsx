@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getUserName, getUserInitials, getUserColor } from '../data/users'
 import { formatDueDate, getDueDateStatus, DUE_DATE_STYLES } from '../utils/dueDateUtils'
 import { timeAgo } from '../utils/time'
@@ -23,6 +23,30 @@ const SORTABLE_COLUMNS = [
 ]
 
 const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 }
+
+// ─── Pagination helpers ──────────────────────────────────────────────────────
+
+/**
+ * Returns an array of page indices and '...' ellipsis markers.
+ * Always shows first, last, and up to 2 pages around the current page.
+ * e.g. [0, '...', 3, 4, 5, '...', 9] for page 4 of 10.
+ */
+function getPageNumbers(totalPages, current) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i)
+
+  const pages = new Set([0, totalPages - 1])
+  for (let i = Math.max(1, current - 1); i <= Math.min(totalPages - 2, current + 1); i++) {
+    pages.add(i)
+  }
+
+  const sorted = [...pages].sort((a, b) => a - b)
+  const result = []
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push('...')
+    result.push(sorted[i])
+  }
+  return result
+}
 
 // ─── Sort logic ──────────────────────────────────────────────────────────────
 
@@ -95,14 +119,13 @@ function SortArrow({ columnKey, sortKey, sortDir }) {
  * Spreadsheet-style table view showing all cards in a flat list.
  *
  * Props:
- *  cards           - full cards map { id → card }
  *  filteredCards    - filtered cards map (subset of cards)
  *  columns         - board columns map { id → column }
  *  columnOrder     - array of column IDs for ordering
  *  onViewCard      - (cardId) => void   opens card detail modal
  *  onAddCard       - () => void         opens add card modal
  */
-export default function TableView({ cards, filteredCards, columns, columnOrder, onViewCard, onAddCard }) {
+export default function TableView({ filteredCards, columns, columnOrder, onViewCard, onAddCard }) {
   const [sortKey, setSortKey] = useState('dueDate')
   const [sortDir, setSortDir] = useState('asc')
   const [page, setPage] = useState(0)
@@ -114,13 +137,17 @@ export default function TableView({ cards, filteredCards, columns, columnOrder, 
     return cardList
   }, [filteredCards, sortKey, sortDir, columns])
 
+  // Reset page when filtered results change
+  const filteredCount = Object.keys(filteredCards).length
+  useEffect(() => { setPage(0) }, [filteredCount])
+
   // Pagination
   const totalCards = sortedCards.length
   const totalPages = Math.max(1, Math.ceil(totalCards / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
   const pagedCards = sortedCards.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE)
 
-  // Reset page when filters/sort change
+  // Reset page on sort change
   const handleSort = (key) => {
     if (key === sortKey) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -176,7 +203,11 @@ export default function TableView({ cards, filteredCards, columns, columnOrder, 
                   <tr
                     key={card.id}
                     onClick={() => onViewCard(card.id)}
-                    className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewCard(card.id) } }}
+                    tabIndex={0}
+                    role="button"
+                    className="hover:bg-indigo-50/50 cursor-pointer transition-colors group
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
                   >
                     {/* Title */}
                     <td className="px-4 py-3">
@@ -235,7 +266,11 @@ export default function TableView({ cards, filteredCards, columns, columnOrder, 
             {/* Add card row */}
             <tr
               onClick={onAddCard}
-              className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAddCard() } }}
+              tabIndex={0}
+              role="button"
+              className="hover:bg-indigo-50/50 cursor-pointer transition-colors group
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
             >
               <td colSpan={SORTABLE_COLUMNS.length} className="px-4 py-3">
                 <span className="text-sm text-gray-400 group-hover:text-indigo-600 transition-colors font-medium">
@@ -263,18 +298,24 @@ export default function TableView({ cards, filteredCards, columns, columnOrder, 
             >
               Previous
             </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i)}
-                className={`w-7 h-7 text-xs font-medium rounded-lg transition-colors
-                           ${i === safePage
-                             ? 'bg-indigo-600 text-white'
-                             : 'text-gray-600 hover:bg-gray-100'}`}
-              >
-                {i + 1}
-              </button>
-            ))}
+            {getPageNumbers(totalPages, safePage).map((item, idx) =>
+              item === '...' ? (
+                <span key={`ellipsis-${idx}`} className="w-7 h-7 flex items-center justify-center text-xs text-gray-400">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={item}
+                  onClick={() => setPage(item)}
+                  className={`w-7 h-7 text-xs font-medium rounded-lg transition-colors
+                             ${item === safePage
+                               ? 'bg-indigo-600 text-white'
+                               : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  {item + 1}
+                </button>
+              )
+            )}
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={safePage >= totalPages - 1}

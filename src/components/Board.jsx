@@ -109,7 +109,6 @@ export default function Board() {
       {/* Table view */}
       {viewMode === 'table' && (
         <TableView
-          cards={board.cards}
           filteredCards={filteredCards}
           columns={board.columns}
           columnOrder={board.columnOrder}
