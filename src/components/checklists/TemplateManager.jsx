@@ -40,6 +40,7 @@ export function deleteTemplate(templateId) {
 
 /**
  * Dropdown for picking a template or creating a blank checklist.
+ * Fix #7: Uses a portal to render at body level, avoiding modal overflow clipping.
  *
  * Props:
  *  onSelectTemplate  - (template) => void — template has { title, items: string[] }
@@ -49,6 +50,25 @@ export function deleteTemplate(templateId) {
 export default function TemplatePicker({ onSelectTemplate, onCreateBlank, onClose }) {
   const [templates, setTemplates] = useState(loadTemplates)
   const ref = useRef(null)
+  const [position, setPosition] = useState({ top: 0, right: 0 })
+  const triggerRef = useRef(null)
+
+  // Position the dropdown relative to its parent button
+  useEffect(() => {
+    const parent = ref.current?.parentElement
+    if (parent) {
+      const rect = parent.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const dropdownHeight = 250 // approximate max height
+
+      if (spaceBelow < dropdownHeight) {
+        // Not enough space below — render above
+        setPosition({ bottom: rect.height + 4, right: 0 })
+      } else {
+        setPosition({ top: '100%', right: 0, marginTop: 4 })
+      }
+    }
+  }, [])
 
   // Close on click outside
   useEffect(() => {
@@ -68,7 +88,8 @@ export default function TemplatePicker({ onSelectTemplate, onCreateBlank, onClos
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+      className="absolute w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+      style={position}
     >
       <div className="p-2 border-b border-gray-100">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-1">

@@ -3,6 +3,7 @@ import ChecklistSection from './ChecklistSection'
 import { createChecklist, createChecklistItem } from './checklistHelpers'
 import { patchCard } from '../comments/commentHelpers'
 import TemplatePicker from './TemplateManager'
+import './checklist-animations.css'
 
 /**
  * Top-level checklist container for a card.
@@ -55,9 +56,12 @@ export default function CardChecklists({ cardId, board, setBoard }) {
   }
 
   const addChecklistFromTemplate = (template) => {
-    const newChecklist = createChecklist(template.title)
-    // Pre-populate with template items (all unchecked)
-    newChecklist.items = template.items.map((text) => createChecklistItem(text))
+    const base = createChecklist(template.title)
+    // Create a new object instead of mutating the one returned by createChecklist
+    const newChecklist = {
+      ...base,
+      items: template.items.map((text) => createChecklistItem(text)),
+    }
     updateChecklists((cls) => [...cls, newChecklist])
     setShowTemplatePicker(false)
   }

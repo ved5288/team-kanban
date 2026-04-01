@@ -21,7 +21,6 @@ export default function ChecklistItem({ item, onToggle, onEdit, onDelete }) {
 
   useEffect(() => {
     if (item.completed && !prevCompletedRef.current) {
-      // Just got checked — trigger strikethrough animation
       setAnimating(true)
       const timer = setTimeout(() => setAnimating(false), 400)
       prevCompletedRef.current = item.completed
@@ -99,7 +98,7 @@ export default function ChecklistItem({ item, onToggle, onEdit, onDelete }) {
           {item.completed && (
             <span
               className={`absolute left-0 top-1/2 h-px bg-gray-400 ${
-                animating ? 'strikethrough-animate' : 'w-full'
+                animating ? 'checklist-strikethrough-animate' : 'w-full'
               }`}
             />
           )}
@@ -117,17 +116,6 @@ export default function ChecklistItem({ item, onToggle, onEdit, onDelete }) {
           <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
         </svg>
       </button>
-
-      {/* Strikethrough animation keyframes */}
-      <style>{`
-        .strikethrough-animate {
-          animation: strikethrough 0.4s ease-out forwards;
-        }
-        @keyframes strikethrough {
-          from { width: 0; }
-          to { width: 100%; }
-        }
-      `}</style>
     </div>
   )
 }

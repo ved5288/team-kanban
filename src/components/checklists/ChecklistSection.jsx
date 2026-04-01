@@ -90,6 +90,8 @@ export default function ChecklistSection({
   // ── Celebrations ─────────────────────────────────────────────────────────────
   const [toast, setToast] = useState(null)
   const [showConfetti, setShowConfetti] = useState(false)
+  // Fix #2: Guard against rapid re-triggers — track if confetti is active
+  const confettiActiveRef = useRef(false)
 
   const handleToggle = useCallback((itemId) => {
     const item = checklist.items.find((i) => i.id === itemId)
@@ -107,7 +109,11 @@ export default function ChecklistSection({
 
     if (willComplete) {
       setToast({ message: pickRandom(CHECKLIST_COMPLETE_MESSAGES), type: 'bold' })
-      setShowConfetti(true)
+      // Only trigger confetti if one isn't already running
+      if (!confettiActiveRef.current) {
+        confettiActiveRef.current = true
+        setShowConfetti(true)
+      }
       if (soundEnabled) {
         try {
           const audio = new Audio('/sounds/tada.wav')
@@ -122,14 +128,31 @@ export default function ChecklistSection({
     }
   }, [checklist, onToggleItem, soundEnabled])
 
+  const handleConfettiDone = useCallback(() => {
+    confettiActiveRef.current = false
+    setShowConfetti(false)
+  }, [])
+
   // ── Save as template ───────────────────────────────────────────────────────
   const [templateSaved, setTemplateSaved] = useState(false)
+  // Fix #8: Track timeout so we can clean up on unmount
+  const templateTimerRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (templateTimerRef.current) clearTimeout(templateTimerRef.current)
+    }
+  }, [])
 
   const handleSaveAsTemplate = () => {
     if (checklist.items.length === 0) return
     saveAsTemplate(checklist)
     setTemplateSaved(true)
-    setTimeout(() => setTemplateSaved(false), 2000)
+    if (templateTimerRef.current) clearTimeout(templateTimerRef.current)
+    templateTimerRef.current = setTimeout(() => {
+      setTemplateSaved(false)
+      templateTimerRef.current = null
+    }, 2000)
   }
 
   // ── Delete confirmation ──────────────────────────────────────────────────────
@@ -147,7 +170,14 @@ export default function ChecklistSection({
   const [dragItemIndex, setDragItemIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
 
-  const handleItemDragStart = (index) => {
+  const handleItemDragStart = (e, index) => {
+    // Fix #5: Set both checklist-item and text/plain data types.
+    // text/plain is set to a non-card-id value so Column's drop handler
+    // safely ignores it (it checks cards[cardId] which won't match).
+    e.dataTransfer.setData('checklist-item', checklist.items[index].id)
+    e.dataTransfer.setData('text/plain', `checklist-item:${checklist.items[index].id}`)
+    e.dataTransfer.effectAllowed = 'move'
+    e.stopPropagation()
     setDragItemIndex(index)
   }
 
@@ -159,6 +189,7 @@ export default function ChecklistSection({
 
   const handleItemDrop = (e, toIndex) => {
     e.preventDefault()
+    e.stopPropagation()
     if (dragItemIndex !== null && dragItemIndex !== toIndex) {
       onReorderItem(checklist.id, dragItemIndex, toIndex)
     }
@@ -172,11 +203,17 @@ export default function ChecklistSection({
   }
 
   // ── Keyboard navigation ──────────────────────────────────────────────────────
+  // Fix #4: Size itemRefs to match current item count, trimming stale entries
   const itemRefs = useRef([])
+  itemRefs.current = itemRefs.current.slice(0, checklist.items.length)
+
+  // Fix #9: Clamp focusedIndex when items are deleted
   const [focusedIndex, setFocusedIndex] = useState(-1)
+  const clampedFocusIndex = focusedIndex >= checklist.items.length
+    ? checklist.items.length - 1
+    : focusedIndex
 
   const handleItemKeyNav = useCallback((e, index) => {
-    // Only handle when not editing text (i.e., target is the row div, not an input)
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
     switch (e.key) {
@@ -205,12 +242,12 @@ export default function ChecklistSection({
 
   // ── Progress ─────────────────────────────────────────────────────────────────
   const progress = getChecklistProgress(checklist)
-  const isComplete = progress && progress.percent === 100
+  // Fix #6: Removed unused `isComplete` variable
 
   return (
     <div className="relative space-y-2 bg-gray-50/50 rounded-lg p-3 border border-gray-100">
-      {/* Confetti overlay */}
-      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
+      {/* Confetti overlay — guarded against stacking */}
+      {showConfetti && <Confetti onDone={handleConfettiDone} />}
 
       {/* Toast — bold renders centred on screen, subtle stays inline */}
       {toast && toast.type === 'bold' && createPortal(
@@ -340,14 +377,9 @@ export default function ChecklistSection({
                 ref={(el) => { itemRefs.current[index] = el }}
                 tabIndex={0}
                 draggable
-                onDragStart={(e) => {
-                  // Set data so the column-level drag handler ignores this
-                  e.dataTransfer.setData('checklist-item', item.id)
-                  e.stopPropagation()
-                  handleItemDragStart(index)
-                }}
+                onDragStart={(e) => handleItemDragStart(e, index)}
                 onDragOver={(e) => handleItemDragOver(e, index)}
-                onDrop={(e) => { e.stopPropagation(); handleItemDrop(e, index) }}
+                onDrop={(e) => handleItemDrop(e, index)}
                 onDragEnd={handleItemDragEnd}
                 onKeyDown={(e) => handleItemKeyNav(e, index)}
                 onFocus={() => setFocusedIndex(index)}
@@ -358,7 +390,7 @@ export default function ChecklistSection({
                 } ${
                   dragItemIndex === index ? 'opacity-40' : ''
                 } ${
-                  focusedIndex === index ? 'ring-1 ring-indigo-300 rounded' : ''
+                  clampedFocusIndex === index ? 'ring-1 ring-indigo-300 rounded' : ''
                 }`}
               >
                 <ChecklistItem
