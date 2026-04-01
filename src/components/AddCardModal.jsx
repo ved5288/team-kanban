@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { USERS } from '../data/users'
 import { useAuth } from '../App'
-import DatePicker from './DatePicker'
 
 const PRIORITIES = ['High', 'Medium', 'Low']
 
@@ -28,7 +27,6 @@ export default function AddCardModal({ defaultColumnId, onSave, onClose }) {
   const [priority,    setPriority]    = useState('Medium')
   const [assignee,    setAssignee]    = useState(user?.id ?? 'alice')
   const [columnId,    setColumnId]    = useState(defaultColumnId ?? 'todo')
-  const [dueDate,     setDueDate]     = useState(null)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -41,7 +39,6 @@ export default function AddCardModal({ defaultColumnId, onSave, onClose }) {
       priority,
       assignee,
       columnId,
-      dueDate,
       createdAt:   new Date().toISOString(),
     })
   }
@@ -148,14 +145,6 @@ export default function AddCardModal({ defaultColumnId, onSave, onClose }) {
                 <option key={col.id} value={col.id}>{col.label}</option>
               ))}
             </select>
-          </div>
-
-          {/* Due Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Due Date <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <DatePicker value={dueDate} onChange={setDueDate} />
           </div>
 
           {/* Actions */}
