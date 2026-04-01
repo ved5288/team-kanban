@@ -1,0 +1,226 @@
+import { INITIAL_BOARD } from '../data/mockData'
+import { useLocalStorage } from './useLocalStorage'
+
+export function useBoard() {
+  const [board, setBoard] = useLocalStorage('kanban_board', INITIAL_BOARD)
+
+  // ── Add a new card ──────────────────────────────────────────────────────────
+
+  const handleAddCard = (newCard) => {
+    setBoard((prev) => {
+      const column = prev.columns[newCard.columnId]
+      return {
+        ...prev,
+        cards: {
+          ...prev.cards,
+          [newCard.id]: newCard,
+        },
+        columns: {
+          ...prev.columns,
+          [newCard.columnId]: {
+            ...column,
+            cardIds: [...column.cardIds, newCard.id],
+          },
+        },
+      }
+    })
+  }
+
+  // ── Update a card ───────────────────────────────────────────────────────────
+
+  const handleUpdateCard = (updatedCard) => {
+    setBoard((prev) => {
+      const oldCard = prev.cards[updatedCard.id]
+      if (!oldCard) return prev
+
+      let columns = prev.columns
+
+      // If the card moved columns, update both columns' cardIds arrays
+      if (oldCard.columnId !== updatedCard.columnId) {
+        const oldColumn = prev.columns[oldCard.columnId]
+        const newColumn = prev.columns[updatedCard.columnId]
+        columns = {
+          ...prev.columns,
+          [oldCard.columnId]: {
+            ...oldColumn,
+            cardIds: oldColumn.cardIds.filter((id) => id !== updatedCard.id),
+          },
+          [updatedCard.columnId]: {
+            ...newColumn,
+            cardIds: [...newColumn.cardIds, updatedCard.id],
+          },
+        }
+      }
+
+      return {
+        ...prev,
+        cards: {
+          ...prev.cards,
+          [updatedCard.id]: updatedCard,
+        },
+        columns,
+      }
+    })
+  }
+
+  // ── Delete a card ───────────────────────────────────────────────────────────
+
+  const handleDeleteCard = (cardId) => {
+    setBoard((prev) => {
+      const card = prev.cards[cardId]
+      if (!card) return prev
+
+      const column = prev.columns[card.columnId]
+      const updatedColumn = {
+        ...column,
+        cardIds: column.cardIds.filter((id) => id !== cardId),
+      }
+
+      const { [cardId]: _removed, ...remainingCards } = prev.cards
+
+      return {
+        ...prev,
+        cards: remainingCards,
+        columns: {
+          ...prev.columns,
+          [card.columnId]: updatedColumn,
+        },
+      }
+    })
+  }
+
+  // ── Move a card (drag & drop) ──────────────────────────────────────────────
+
+  const handleMoveCard = (cardId, targetColumnId, targetIndex) => {
+    setBoard((prev) => {
+      const card = prev.cards[cardId]
+      if (!card) return prev
+
+      const sourceColumnId = card.columnId
+      const sourceColumn = prev.columns[sourceColumnId]
+      const targetColumn = prev.columns[targetColumnId]
+      if (!sourceColumn || !targetColumn) return prev
+
+      const sourceIndex = sourceColumn.cardIds.indexOf(cardId)
+
+      if (sourceColumnId === targetColumnId) {
+        // Same column reorder
+        // Adjust for the removed card: DOM still shows N elements when index was
+        // calculated, but the filtered list has N-1. If dragging downward, decrement.
+        let adjustedIndex = targetIndex
+        if (targetIndex > sourceIndex) {
+          adjustedIndex = targetIndex - 1
+        }
+        const clampedIndex = Math.min(adjustedIndex, sourceColumn.cardIds.length - 1)
+
+        // Bail out if the card didn't actually move
+        if (clampedIndex === sourceIndex) return prev
+
+        const reorderedIds = [...sourceColumn.cardIds]
+        reorderedIds.splice(sourceIndex, 1)
+        reorderedIds.splice(clampedIndex, 0, cardId)
+
+        return {
+          ...prev,
+          columns: {
+            ...prev.columns,
+            [sourceColumnId]: { ...sourceColumn, cardIds: reorderedIds },
+          },
+        }
+      } else {
+        // Cross-column move
+        const sourceCardIds = sourceColumn.cardIds.filter((id) => id !== cardId)
+        const targetCardIds = [...targetColumn.cardIds]
+        const clampedIndex = Math.min(targetIndex, targetCardIds.length)
+        targetCardIds.splice(clampedIndex, 0, cardId)
+
+        return {
+          ...prev,
+          cards: {
+            ...prev.cards,
+            [cardId]: { ...card, columnId: targetColumnId },
+          },
+          columns: {
+            ...prev.columns,
+            [sourceColumnId]: { ...sourceColumn, cardIds: sourceCardIds },
+            [targetColumnId]: { ...targetColumn, cardIds: targetCardIds },
+          },
+        }
+      }
+    })
+  }
+
+  // ── Add a new lane ──────────────────────────────────────────────────────────
+  // Returns true on success, false if name is a duplicate.
+
+  const addLane = (name) => {
+    const duplicate = Object.values(board.columns).some(
+      (col) => col.title.toLowerCase() === name.toLowerCase()
+    )
+    if (duplicate) {
+      alert(`A lane named "${name}" already exists.`)
+      return false
+    }
+
+    const colId = `col-${Date.now()}`
+    setBoard((prev) => ({
+      ...prev,
+      columns: {
+        ...prev.columns,
+        [colId]: { id: colId, title: name, cardIds: [] },
+      },
+      columnOrder: [...prev.columnOrder, colId],
+    }))
+    return true
+  }
+
+  // ── Delete a lane ─────────────────────────────────────────────────────────
+
+  const handleDeleteLane = (columnId) => {
+    const column = board.columns[columnId]
+    if (!column) return
+
+    const cardCount = column.cardIds.length
+    const message = cardCount > 0
+      ? `Delete "${column.title}" and its ${cardCount} card${cardCount > 1 ? 's' : ''}? This cannot be undone.`
+      : `Delete the empty lane "${column.title}"?`
+
+    if (!window.confirm(message)) return
+
+    setBoard((prev) => {
+      const remainingCards = { ...prev.cards }
+      for (const cardId of column.cardIds) {
+        delete remainingCards[cardId]
+      }
+
+      const { [columnId]: _removed, ...remainingColumns } = prev.columns
+
+      return {
+        ...prev,
+        cards: remainingCards,
+        columns: remainingColumns,
+        columnOrder: prev.columnOrder.filter((id) => id !== columnId),
+      }
+    })
+  }
+
+  // ── Reset board (dev helper) ────────────────────────────────────────────────
+
+  const resetBoard = () => {
+    if (window.confirm('Reset board to the original demo data? All changes will be lost.')) {
+      setBoard(INITIAL_BOARD)
+    }
+  }
+
+  return {
+    board,
+    setBoard,
+    handleAddCard,
+    handleUpdateCard,
+    handleDeleteCard,
+    handleMoveCard,
+    addLane,
+    handleDeleteLane,
+    resetBoard,
+  }
+}
