@@ -62,7 +62,7 @@ function Chip({ label, onRemove }) {
  *  activeFilters - { priority: string[], assignees: string[], dateFilter: null|object }
  *  onChange      - (newFilters) => void  receives the full updated filters object
  */
-export default function FilterBar({ activeFilters, onChange, onOpenActivity }) {
+export default function FilterBar({ activeFilters, onChange, onToggleActivity }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const { priority, assignees, dateFilter } = activeFilters
   const activeCount = countActiveFilters(activeFilters)
@@ -137,7 +137,7 @@ export default function FilterBar({ activeFilters, onChange, onOpenActivity }) {
 
         {/* Activity tab — far right */}
         <button
-          onClick={onOpenActivity}
+          onClick={onToggleActivity}
           className={`flex items-center gap-2 text-sm font-medium text-gray-600
                      hover:text-indigo-600 transition-colors shrink-0
                      ${activeCount === 0 ? 'ml-auto' : ''}`}

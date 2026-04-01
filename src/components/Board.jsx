@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { INITIAL_BOARD } from '../data/mockData'
 import { countActiveFilters } from '../utils/filterUtils'
 import { useBoard } from '../hooks/useBoard'
@@ -51,7 +51,7 @@ export default function Board() {
   const [activityOpen, setActivityOpen] = useState(true)
 
   // Wrap handleMoveCard to log cross-column moves to the activity feed
-  const handleMoveCardWithLog = (cardId, targetColumnId, targetIndex) => {
+  const handleMoveCardWithLog = useCallback((cardId, targetColumnId, targetIndex) => {
     const card = board.cards[cardId]
     if (card && card.columnId !== targetColumnId) {
       logMove({
@@ -63,7 +63,7 @@ export default function Board() {
       })
     }
     handleMoveCard(cardId, targetColumnId, targetIndex)
-  }
+  }, [board.cards, board.columns, user, logMove, handleMoveCard])
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -90,7 +90,7 @@ export default function Board() {
       <FilterBar
         activeFilters={activeFilters}
         onChange={setActiveFilters}
-        onOpenActivity={() => setActivityOpen((p) => !p)}
+        onToggleActivity={() => setActivityOpen((p) => !p)}
       />
 
       {/* Main content: columns + activity feed */}

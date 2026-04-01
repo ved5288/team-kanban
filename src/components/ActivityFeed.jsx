@@ -1,22 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { getUserName, getUserInitials, getUserColor } from '../data/users'
+import { timeAgo } from '../utils/time'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const QUICK_REACTIONS = ['👍', '🎉', '❤️']
 const MORE_EMOJIS = ['🚀', '👀', '😂', '🙌', '🔥', '✅', '💯', '😮', '👏', '🤔', '😅', '⚡']
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function timeAgo(isoString) {
-  const diff = Date.now() - new Date(isoString).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
 
 function getDateLabel(isoString) {
   const date = new Date(isoString)
@@ -46,14 +35,16 @@ function groupByDate(activities) {
 
 function EmojiPicker({ onSelect, onClose }) {
   const ref = useRef(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     function handleMouseDown(e) {
-      if (ref.current && !ref.current.contains(e.target)) onClose()
+      if (ref.current && !ref.current.contains(e.target)) onCloseRef.current()
     }
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [onClose])
+  }, []) // stable — reads latest onClose via ref
 
   return (
     <div
@@ -138,13 +129,13 @@ function ActivityItem({ entry, currentUserId, onReact }) {
                     >
                       {emoji} <span>{users.length}</span>
                     </button>
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30
+                    {/* Tooltip — left-0 anchored to avoid clipping at panel edge */}
+                    <div className="absolute bottom-full left-0 mb-2 z-30
                                     bg-gray-800 text-white text-xs rounded px-2 py-1
                                     whitespace-nowrap pointer-events-none
                                     opacity-0 group-hover/reaction:opacity-100 transition-opacity">
                       {tooltipText}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2
+                      <div className="absolute top-full left-3
                                       border-4 border-transparent border-t-gray-800" />
                     </div>
                   </div>
@@ -189,6 +180,13 @@ function ActivityItem({ entry, currentUserId, onReact }) {
 // ─── ActivityFeed ─────────────────────────────────────────────────────────────
 
 export default function ActivityFeed({ activities, currentUserId, onReact, isOpen, onToggle }) {
+  // Force re-render every 30s so relative timestamps stay fresh
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
   const items = groupByDate(activities)
 
   return (

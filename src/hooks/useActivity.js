@@ -18,7 +18,7 @@ export function useActivity() {
         reactions: {},
       },
       ...prev,
-    ])
+    ].slice(0, 100))
   }, [setActivities])
 
   const toggleReaction = useCallback((activityId, emoji, userId) => {
