@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 import { timeAgo } from '../utils/time'
 import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
+import LabelsModal from './LabelsModal'
 
 // ─── Priority badge styling ───────────────────────────────────────────────────
 
@@ -17,17 +18,24 @@ const PRIORITY_STYLES = {
  * Renders a single Kanban card.
  *
  * Props:
- *  card        - the card data object { id, title, description, priority, assignee, createdAt, color, dueDate }
- *  onView      - (cardId) => void   called when the user clicks the card title or edit button
- *  isSelecting - bool: bulk selection mode is active
- *  isSelected  - bool: this card is currently selected
- *  onSelect    - (cardId, e) => void: called on click during selection mode
+ *  card          - the card data object { id, title, description, priority, assignee, createdAt, color, dueDate, labelIds }
+ *  onView        - (cardId) => void   called when the user clicks the card
+ *  onUpdateCard  - (updatedCard) => void   called to persist label changes
+ *  labels        - Label[]   board-wide label definitions
+ *  onAddLabel    - (name, symbol) => void  create a new board-level label
+ *  isSelecting   - bool: bulk selection mode is active
+ *  isSelected    - bool: this card is currently selected
+ *  onSelect      - (cardId, e) => void: called on click during selection mode
  */
-export default function Card({ card, onView, isSelecting = false, isSelected = false, onSelect }) {
+export default function Card({ card, onView, onUpdateCard, labels = [], onAddLabel, isSelecting = false, isSelected = false, onSelect }) {
   const { id, title, description, priority, assignee, createdAt, color, dueDate, parentCardId, childCardIds } = card
-  const hasParent = !!parentCardId
+  const hasParent  = !!parentCardId
   const childCount = (childCardIds ?? []).length
-  const [isDragging, setIsDragging] = useState(false)
+  const cardLabelIds = card.labelIds ?? []
+  const cardLabels   = cardLabelIds.map((lid) => labels.find((l) => l.id === lid)).filter(Boolean)
+
+  const [isDragging,   setIsDragging]   = useState(false)
+  const [labelsOpen,   setLabelsOpen]   = useState(false)
   const wasDragged = useRef(false)
 
   const handleDragStart = (e) => {
@@ -49,13 +57,25 @@ export default function Card({ card, onView, isSelecting = false, isSelected = f
     onView(id)
   }
 
+  const handleToggleLabel = (labelId) => {
+    const updated = cardLabelIds.includes(labelId)
+      ? cardLabelIds.filter((lid) => lid !== labelId)
+      : [...cardLabelIds, labelId]
+    onUpdateCard?.({ ...card, labelIds: updated })
+  }
+
+  const openLabels = (e) => {
+    e.stopPropagation()
+    setLabelsOpen((v) => !v)
+  }
+
   return (
     <div
       draggable={!isSelecting}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={handleClick}
-      className={`bg-white rounded-lg border shadow-sm transition-all overflow-hidden
+      className={`bg-white rounded-lg border shadow-sm transition-all overflow-visible
                  ${isSelecting
                    ? `cursor-pointer ${isSelected
                        ? 'border-indigo-500 ring-2 ring-indigo-400 shadow-indigo-100'
@@ -65,7 +85,7 @@ export default function Card({ card, onView, isSelecting = false, isSelected = f
                  ${isDragging ? 'opacity-40' : 'opacity-100'}`}
     >
       {/* Colour stripe */}
-      {color && <div className={`h-1 w-full ${color}`} />}
+      {color && <div className={`h-1 w-full rounded-t-lg ${color}`} />}
 
       <div className="p-3">
 
@@ -83,7 +103,6 @@ export default function Card({ card, onView, isSelecting = false, isSelected = f
             <span className="text-sm font-semibold text-gray-800 leading-snug">{title}</span>
           </div>
         ) : (
-          /* Normal mode: title text */
           <p className="text-sm font-semibold text-gray-800 leading-snug mb-2">
             {title}
           </p>
@@ -109,6 +128,55 @@ export default function Card({ card, onView, isSelecting = false, isSelected = f
             </div>
           )
         })()}
+
+        {/* Labels row */}
+        {!isSelecting && (
+          <div className="relative flex items-center gap-1 flex-wrap mb-2">
+            {/* Existing label chips — clicking opens the modal */}
+            {cardLabels.map((label) => (
+              <button
+                key={label.id}
+                onClick={openLabels}
+                title={label.name}
+                className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5
+                           bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full
+                           hover:bg-indigo-100 transition-colors"
+              >
+                <span className="leading-none text-sm">{label.symbol}</span>
+                <span>{label.name}</span>
+              </button>
+            ))}
+
+            {/* Tag button — always visible on hover when no labels; always visible when labels exist */}
+            <button
+              onClick={openLabels}
+              title="Add labels"
+              className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full border
+                          transition-colors
+                          ${cardLabels.length > 0
+                            ? 'text-gray-400 border-transparent hover:border-gray-300 hover:text-indigo-500'
+                            : 'text-gray-400 border-dashed border-gray-300 hover:border-indigo-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100'
+                          }`}
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a0 0 0 014-4z" />
+              </svg>
+              {cardLabels.length === 0 && <span>Label</span>}
+            </button>
+
+            {/* Labels popup */}
+            {labelsOpen && (
+              <LabelsModal
+                labels={labels}
+                cardLabelIds={cardLabelIds}
+                onToggleLabel={handleToggleLabel}
+                onAddLabel={onAddLabel}
+                onClose={() => setLabelsOpen(false)}
+              />
+            )}
+          </div>
+        )}
 
         {/* Parent/child link indicators */}
         {(hasParent || childCount > 0) && (

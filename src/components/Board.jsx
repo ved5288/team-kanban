@@ -5,6 +5,7 @@ import { useBoard } from '../hooks/useBoard'
 import { useFilters } from '../hooks/useFilters'
 import { useBulkSelect } from '../hooks/useBulkSelect'
 import { useActivity } from '../hooks/useActivity'
+import { useLabels } from '../hooks/useLabels'
 import { useAuth } from '../App'
 import Header from './Header'
 import Column from './Column'
@@ -45,6 +46,7 @@ export default function Board() {
   const { user } = useAuth()
   const { activities, logMove, toggleReaction } = useActivity()
   const { activeFilters, setActiveFilters, filteredCards } = useFilters(board.cards)
+  const { labels, addLabel } = useLabels()
 
   const bulk = useBulkSelect()
 
@@ -122,6 +124,7 @@ export default function Board() {
         activeFilters={activeFilters}
         onChange={setActiveFilters}
         onToggleActivity={() => setActivityOpen((p) => !p)}
+        labels={labels}
       />
 
       {/* Main content: columns + activity feed */}
@@ -144,6 +147,7 @@ export default function Board() {
                 onAddCard={setAddingToColumn}
                 onViewCard={setViewingCardId}
                 onDeleteCard={handleDeleteCard}
+                onUpdateCard={handleUpdateCard}
                 onMoveCard={handleMoveCardWithLog}
                 onDeleteLane={isDefault ? undefined : handleDeleteLane}
                 isSelecting={bulk.isSelecting}
@@ -152,6 +156,8 @@ export default function Board() {
                   ? bulk.shiftSelectRange(cardId, allVisibleIds)
                   : bulk.toggleCard(cardId)
                 }
+                labels={labels}
+                onAddLabel={addLabel}
               />
             )
           })}
@@ -194,6 +200,8 @@ export default function Board() {
           onSave={handleUpdateCard}
           onClose={() => setViewingCardId(null)}
           onViewCard={setViewingCardId}
+          labels={labels}
+          onAddLabel={addLabel}
         />
       )}
 
