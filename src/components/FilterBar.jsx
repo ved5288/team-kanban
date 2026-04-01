@@ -59,18 +59,19 @@ function Chip({ label, onRemove }) {
  * Board-level filter bar.
  *
  * Props:
- *  activeFilters    - { priority: string[], assignees: string[], dateFilter: null|object }
+ *  activeFilters    - { priority: string[], assignees: string[], dateFilter: null|object, labels: string[] }
  *  onChange         - (newFilters) => void  receives the full updated filters object
  *  viewMode         - 'board' | 'table'
  *  onViewModeChange - (mode) => void
  *  onToggleActivity - () => void
+ *  labels           - Label[]  board-wide label definitions (for the labels dropdown)
  */
-export default function FilterBar({ activeFilters, onChange, viewMode, onViewModeChange, onToggleActivity }) {
+export default function FilterBar({ activeFilters, onChange, viewMode, onViewModeChange, onToggleActivity, labels = [] }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const { priority, assignees, dateFilter } = activeFilters
+  const { priority, assignees, dateFilter, labels: selectedLabels = [] } = activeFilters
   const activeCount = countActiveFilters(activeFilters)
 
-  const clearAll = () => onChange({ priority: [], assignees: [], dateFilter: null })
+  const clearAll = () => onChange({ priority: [], assignees: [], dateFilter: null, labels: [] })
 
   const removePriority = (p) =>
     onChange({ ...activeFilters, priority: priority.filter((v) => v !== p) })
@@ -79,6 +80,9 @@ export default function FilterBar({ activeFilters, onChange, viewMode, onViewMod
     onChange({ ...activeFilters, assignees: assignees.filter((v) => v !== uid) })
 
   const clearDate = () => onChange({ ...activeFilters, dateFilter: null })
+
+  const removeLabel = (lid) =>
+    onChange({ ...activeFilters, labels: selectedLabels.filter((v) => v !== lid) })
 
   return (
     <div className="bg-white border-b border-gray-200">
@@ -125,6 +129,13 @@ export default function FilterBar({ activeFilters, onChange, viewMode, onViewMod
             {dateFilter && (
               <Chip label={describeDateFilter(dateFilter)} onRemove={clearDate} />
             )}
+            {selectedLabels.map((lid) => {
+              const label = labels.find((l) => l.id === lid)
+              if (!label) return null
+              return (
+                <Chip key={lid} label={`${label.symbol} ${label.name}`} onRemove={() => removeLabel(lid)} />
+              )
+            })}
           </div>
         )}
 
@@ -229,6 +240,28 @@ export default function FilterBar({ activeFilters, onChange, viewMode, onViewMod
             value={dateFilter}
             onChange={(val) => onChange({ ...activeFilters, dateFilter: val })}
           />
+
+          {/* Labels filter */}
+          {labels.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Labels</span>
+              <MultiSelectDropdown
+                label="Labels"
+                options={labels.map((l) => ({ value: l.id, label: l.name }))}
+                selected={selectedLabels}
+                onChange={(val) => onChange({ ...activeFilters, labels: val })}
+                renderOption={(opt) => {
+                  const label = labels.find((l) => l.id === opt.value)
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">{label?.symbol}</span>
+                      <span className="text-sm text-gray-700">{opt.label}</span>
+                    </div>
+                  )
+                }}
+              />
+            </div>
+          )}
 
         </div>
       )}

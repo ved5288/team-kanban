@@ -6,6 +6,7 @@
  *     priority:   string[],          // e.g. ['High', 'Medium']
  *     assignees:  string[],          // e.g. ['vedant', 'yash']
  *     dateFilter: null | DateFilter, // see shapes below
+ *     labels:     string[],          // e.g. ['label-1', 'label-3']
  *   }
  *
  * DateFilter shapes (discriminated by mode):
@@ -98,21 +99,23 @@ function matchesDateFilter(isoString, dateFilter) {
  * @returns {Object}         filtered cards map (same shape as input cards)
  */
 export function applyFilters(cards, filters) {
-  const { priority, assignees, dateFilter } = filters
+  const { priority, assignees, dateFilter, labels = [] } = filters
 
   const noPriorityFilter = priority.length === 0
   const noAssigneeFilter = assignees.length === 0
   const noDateFilter     = dateFilter === null
+  const noLabelFilter    = labels.length === 0
 
   // Fast-path: nothing active
-  if (noPriorityFilter && noAssigneeFilter && noDateFilter) return cards
+  if (noPriorityFilter && noAssigneeFilter && noDateFilter && noLabelFilter) return cards
 
   const result = {}
 
   for (const [id, card] of Object.entries(cards)) {
-    if (!noPriorityFilter && !priority.includes(card.priority))             continue
-    if (!noAssigneeFilter && !assignees.includes(card.assignee))            continue
+    if (!noPriorityFilter && !priority.includes(card.priority))              continue
+    if (!noAssigneeFilter && !assignees.includes(card.assignee))             continue
     if (!noDateFilter     && !matchesDateFilter(card.createdAt, dateFilter)) continue
+    if (!noLabelFilter    && !labels.some((lid) => (card.labelIds ?? []).includes(lid))) continue
     result[id] = card
   }
 
@@ -120,13 +123,14 @@ export function applyFilters(cards, filters) {
 }
 
 /**
- * Returns the number of active filter dimensions (0–3).
+ * Returns the number of active filter dimensions (0–4).
  * Useful for showing a badge count on the filter toggle button.
  */
 export function countActiveFilters(filters) {
   let count = 0
-  if (filters.priority.length  > 0) count++
-  if (filters.assignees.length > 0) count++
-  if (filters.dateFilter !== null)  count++
+  if (filters.priority.length  > 0)         count++
+  if (filters.assignees.length > 0)         count++
+  if (filters.dateFilter !== null)          count++
+  if ((filters.labels ?? []).length > 0)   count++
   return count
 }

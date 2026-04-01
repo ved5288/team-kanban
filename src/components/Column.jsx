@@ -55,8 +55,11 @@ function getDropIndex(listEl, mouseY) {
  *  isSelecting     - bool: bulk selection mode active
  *  isSelected      - (cardId) => bool
  *  onSelectCard    - (cardId, e) => void
+ *  onUpdateCard    - (updatedCard) => void  persists card changes (e.g. label updates)
+ *  labels          - Label[]   board-wide label definitions
+ *  onAddLabel      - (name, symbol) => void  create a new board-level label
  */
-export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onViewCard, onDeleteCard, onMoveCard, onDeleteLane, isSelecting, isSelected, onSelectCard }) {
+export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onViewCard, onDeleteCard, onUpdateCard, onMoveCard, onDeleteLane, isSelecting, isSelected, onSelectCard, labels, onAddLabel }) {
   const { id, title, cardIds } = column
   // Use filtered IDs when provided, fall back to all IDs for backward compatibility
   const columnCards = (filteredCardIds ?? cardIds).map((cid) => cards[cid]).filter(Boolean)
@@ -194,6 +197,9 @@ export default function Column({ column, cards, filteredCardIds, isFiltering, on
                 <Card
                   card={card}
                   onView={onViewCard}
+                  onUpdateCard={onUpdateCard}
+                  labels={labels}
+                  onAddLabel={onAddLabel}
                   isSelecting={isSelecting}
                   isSelected={isSelected?.(card.id) ?? false}
                   onSelect={onSelectCard}
