@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 
@@ -26,17 +27,43 @@ function timeAgo(isoString) {
  * Renders a single Kanban card.
  *
  * Props:
- *  card      - the card data object { id, title, description, priority, assignee, createdAt }
+ *  card      - the card data object { id, title, description, priority, assignee, createdAt, color }
  *  onDelete  - (cardId) => void   called when the user deletes the card
  */
 export default function Card({ card, onDelete }) {
   const { id, title, description, priority, assignee, createdAt, color } = card
   const navigate = useNavigate()
+  const [isDragging, setIsDragging] = useState(false)
+  const wasDragged = useRef(false)
+
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+    setIsDragging(true)
+    wasDragged.current = true
+  }
+
+  const handleDragEnd = () => {
+    setIsDragging(false)
+    // Reset the flag after a tick so the click handler can check it
+    requestAnimationFrame(() => { wasDragged.current = false })
+  }
+
+  const handleLinkClick = (e) => {
+    // Prevent navigation if the user just finished dragging
+    if (wasDragged.current) {
+      e.preventDefault()
+    }
+  }
 
   return (
     <div
-      className="bg-white rounded-lg border border-gray-200 shadow-sm
-                 hover:shadow-md hover:border-gray-300 transition-all cursor-default group overflow-hidden"
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className={`bg-white rounded-lg border border-gray-200 shadow-sm
+                 hover:shadow-md hover:border-gray-300 transition-all cursor-grab active:cursor-grabbing group overflow-hidden
+                 ${isDragging ? 'opacity-40' : 'opacity-100'}`}
     >
       {/* Colour stripe */}
       {color && <div className={`h-1 w-full ${color}`} />}
@@ -45,6 +72,8 @@ export default function Card({ card, onDelete }) {
         {/* Title — click to open the full card detail page */}
         <Link
           to={`/card/${id}`}
+          onClick={handleLinkClick}
+          draggable={false}
           className="block text-sm font-semibold text-gray-800 leading-snug mb-2
                      hover:text-indigo-600 transition-colors"
         >
@@ -58,7 +87,7 @@ export default function Card({ card, onDelete }) {
           </p>
         )}
 
-        {/* Footer: priority + assignee + time */}
+        {/* Footer: priority + assignee + time + edit button */}
         <div className="flex items-center justify-between gap-2">
 
           {/* Left: priority badge */}
