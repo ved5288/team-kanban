@@ -2,6 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { INITIAL_BOARD } from '../data/mockData'
 import { getUserName, getUserInitials, getUserColor } from '../data/users'
+import CardComments from './CardComments'
 
 // ─── Priority styles ──────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ export default function CardDetail() {
   const navigate = useNavigate()
 
   // Read the live board from localStorage (same key as Board.jsx)
-  const [board] = useLocalStorage('kanban_board', INITIAL_BOARD)
+  const [board, setBoard] = useLocalStorage('kanban_board', INITIAL_BOARD)
 
   const card = board.cards[id]
 
@@ -176,6 +177,12 @@ export default function CardDetail() {
             <p className="text-xs text-gray-300 font-mono pt-2">
               ID: {id}
             </p>
+
+            {/* Divider */}
+            <hr className="border-gray-100" />
+
+            {/* Comments */}
+            <CardComments cardId={id} board={board} setBoard={setBoard} />
 
           </div>
         </div>
