@@ -383,6 +383,8 @@ export default function Board() {
           card={board.cards[viewingCardId]}
           columns={board.columns}
           columnOrder={board.columnOrder}
+          board={board}
+          setBoard={setBoard}
           onSave={handleUpdateCard}
           onClose={() => setViewingCardId(null)}
         />
