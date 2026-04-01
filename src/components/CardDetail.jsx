@@ -83,7 +83,7 @@ export default function CardDetail() {
       {/* Top bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-3">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}
           className="text-gray-400 hover:text-gray-700 transition-colors text-sm font-medium flex items-center gap-1"
         >
           ← Back
