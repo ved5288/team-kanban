@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 import { timeAgo } from '../utils/time'
+import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
 
 // ─── Priority badge styling ───────────────────────────────────────────────────
 
@@ -8,30 +9,6 @@ const PRIORITY_STYLES = {
   High:   'bg-red-100 text-red-700',
   Medium: 'bg-amber-100 text-amber-700',
   Low:    'bg-green-100 text-green-700',
-}
-
-// ─── Due date helpers ─────────────────────────────────────────────────────────
-
-function formatDueDate(dateStr) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  })
-}
-
-function dueDateStatus(dateStr) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const due = new Date(dateStr + 'T00:00:00')
-  const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24))
-  if (diffDays < 0)  return 'overdue'   // past
-  if (diffDays <= 3) return 'soon'      // today or within 3 days
-  return 'upcoming'
-}
-
-const DUE_DATE_STYLES = {
-  overdue:  'bg-red-50   text-red-600   border border-red-200',
-  soon:     'bg-amber-50 text-amber-600 border border-amber-200',
-  upcoming: 'bg-gray-50  text-gray-500  border border-gray-200',
 }
 
 // ─── Card Component ───────────────────────────────────────────────────────────
@@ -88,7 +65,7 @@ export default function Card({ card, onView }) {
 
         {/* Due date badge */}
         {dueDate && (() => {
-          const status = dueDateStatus(dueDate)
+          const status = getDueDateStatus(dueDate)
           return (
             <div className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${DUE_DATE_STYLES[status]}`}>
               <span className="leading-none">📅</span>
@@ -110,7 +87,6 @@ export default function Card({ card, onView }) {
 
           {/* Right: assignee avatar + time + edit button */}
           <div className="flex items-center gap-2">
-            {/* Edit button — visible on card hover */}
             <div className="relative">
               <button
                 onClick={() => onView(id)}

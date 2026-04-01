@@ -35,7 +35,7 @@ export default function AddCardModal({ defaultColumnId, columns, onSave, onClose
       priority,
       assignee,
       columnId,
-      dueDate:     dueDate ?? null,
+      dueDate,
       createdAt:   new Date().toISOString(),
     })
   }
