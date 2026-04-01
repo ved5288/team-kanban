@@ -400,10 +400,14 @@ export default function CardDetail() {
               )}
             </div>
 
-            <hr className="border-gray-100" />
+            {!isEditing && (
+              <>
+                <hr className="border-gray-100" />
 
-            {/* Comments */}
-            <CardComments cardId={id} board={board} setBoard={setBoard} />
+                {/* Comments */}
+                <CardComments cardId={id} board={board} setBoard={setBoard} />
+              </>
+            )}
 
           </div>
         </div>
