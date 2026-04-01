@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { USERS, getUserColor, getUserInitials, getUserName } from '../data/users'
 import CardComments from './CardComments'
+import CardChecklists from './checklists/CardChecklists'
 
 const PRIORITIES = ['High', 'Medium', 'Low']
 
@@ -166,6 +167,11 @@ export default function CardDetailModal({ card, columns, columnOrder, board, set
                 </div>
                 <span title={formatDate(card.createdAt)}>Created {timeAgo(card.createdAt)}</span>
               </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Checklists */}
+              <CardChecklists cardId={card.id} board={board} setBoard={setBoard} />
 
               <hr className="border-gray-100" />
 
