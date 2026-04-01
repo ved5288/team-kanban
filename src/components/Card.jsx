@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 import { timeAgo } from '../utils/time'
+import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
 
 // ─── Priority badge styling ───────────────────────────────────────────────────
 
@@ -16,11 +17,11 @@ const PRIORITY_STYLES = {
  * Renders a single Kanban card.
  *
  * Props:
- *  card      - the card data object { id, title, description, priority, assignee, createdAt, color }
+ *  card      - the card data object { id, title, description, priority, assignee, createdAt, color, dueDate }
  *  onView    - (cardId) => void   called when the user clicks the card title or edit button
  */
 export default function Card({ card, onView }) {
-  const { id, title, description, priority, assignee, createdAt, color } = card
+  const { id, title, description, priority, assignee, createdAt, color, dueDate } = card
   const [isDragging, setIsDragging] = useState(false)
 
   const handleDragStart = (e) => {
@@ -62,6 +63,20 @@ export default function Card({ card, onView }) {
           </p>
         )}
 
+        {/* Due date badge */}
+        {dueDate && (() => {
+          const status = getDueDateStatus(dueDate)
+          return (
+            <div className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full mb-2 ${DUE_DATE_STYLES[status]}`}>
+              <span className="leading-none">📅</span>
+              <span>
+                {status === 'overdue' ? 'Overdue · ' : 'Due · '}
+                {formatDueDate(dueDate)}
+              </span>
+            </div>
+          )
+        })()}
+
         {/* Footer: priority + assignee + time + edit button */}
         <div className="flex items-center justify-between gap-2">
 
@@ -72,7 +87,6 @@ export default function Card({ card, onView }) {
 
           {/* Right: assignee avatar + time + edit button */}
           <div className="flex items-center gap-2">
-            {/* Edit button — visible on card hover */}
             <div className="relative">
               <button
                 onClick={() => onView(id)}

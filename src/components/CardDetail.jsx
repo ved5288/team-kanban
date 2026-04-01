@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { INITIAL_BOARD } from '../data/mockData'
 import { USERS, getUserName } from '../data/users'
 import { timeAgo, formatDate } from '../utils/time'
+import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
 import Avatar from './Avatar'
 import CardComments from './CardComments'
 
@@ -40,7 +41,6 @@ export default function CardDetail() {
 
   const [board, setBoard] = useLocalStorage('kanban_board', INITIAL_BOARD)
 
-  // Support opening directly in edit mode (e.g. from the board's hover edit button)
   const card = board.cards[id]
   const startInEditMode = !!location.state?.editing && !!card
 
@@ -85,7 +85,9 @@ export default function CardDetail() {
     )
   }
 
-  const { title, description, priority, assignee, columnId, createdAt, color } = card
+  // ── Derived values ──────────────────────────────────────────────────────────
+
+  const { title, description, priority, assignee, columnId, createdAt, color, dueDate } = card
   const column = board.columns[columnId]
   const columnTitle = column?.title ?? columnId
   const priorityStyle = PRIORITY_STYLES[priority] ?? { badge: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' }
@@ -118,7 +120,6 @@ export default function CardDetail() {
       const newColumnId = draft.columnId
       let updatedColumns = prev.columns
 
-      // If the status changed, move the card between columns
       if (oldColumnId !== newColumnId) {
         updatedColumns = {
           ...prev.columns,
@@ -135,10 +136,7 @@ export default function CardDetail() {
 
       return {
         ...prev,
-        cards: {
-          ...prev.cards,
-          [id]: { ...prev.cards[id], ...draft },
-        },
+        cards: { ...prev.cards, [id]: { ...prev.cards[id], ...draft } },
         columns: updatedColumns,
       }
     })
@@ -216,6 +214,20 @@ export default function CardDetail() {
                 <span className="text-xs font-medium bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full">
                   {columnTitle}
                 </span>
+
+                {/* Due date badge */}
+                {dueDate && (() => {
+                  const status = getDueDateStatus(dueDate)
+                  return (
+                    <span className={`text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1.5 ${DUE_DATE_STYLES[status]}`}>
+                      <span>📅</span>
+                      <span>
+                        {status === 'overdue' ? 'Overdue · ' : 'Due · '}
+                        {formatDueDate(dueDate, { month: 'long' })}
+                      </span>
+                    </span>
+                  )
+                })()}
               </div>
             )}
 
@@ -282,7 +294,7 @@ export default function CardDetail() {
 
             <hr className="border-gray-100" />
 
-            {/* Assignee + Created at */}
+            {/* Assignee + due date + created at */}
             <div className="flex items-start justify-between gap-6">
 
               {/* Assignee */}
@@ -311,6 +323,22 @@ export default function CardDetail() {
                   </div>
                 )}
               </div>
+
+              {/* Due date */}
+              {dueDate && (() => {
+                const overdue = getDueDateStatus(dueDate) === 'overdue'
+                return (
+                  <div className="text-right">
+                    <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                      Due Date
+                    </h2>
+                    <p className={`text-sm font-medium ${overdue ? 'text-red-600' : 'text-gray-700'}`}>
+                      {formatDueDate(dueDate)}
+                    </p>
+                    {overdue && <p className="text-xs text-red-400 mt-0.5">Overdue</p>}
+                  </div>
+                )
+              })()}
 
               {/* Created at */}
               <div className="text-right">
@@ -400,10 +428,14 @@ export default function CardDetail() {
               )}
             </div>
 
-            <hr className="border-gray-100" />
+            {!isEditing && (
+              <>
+                <hr className="border-gray-100" />
 
-            {/* Comments */}
-            <CardComments cardId={id} board={board} setBoard={setBoard} />
+                {/* Comments */}
+                <CardComments cardId={id} board={board} setBoard={setBoard} />
+              </>
+            )}
 
           </div>
         </div>
