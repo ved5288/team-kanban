@@ -4,6 +4,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 import Header from './Header'
 import Column from './Column'
 import AddCardModal from './AddCardModal'
+import CardDetailModal from './CardDetailModal'
 
 /**
  * The main board view.
@@ -22,6 +23,9 @@ export default function Board() {
 
   // Which column's "Add card" was clicked (null = modal closed)
   const [addingToColumn, setAddingToColumn] = useState(null)
+
+  // Which card's detail popup is open (null = closed, string = cardId)
+  const [viewingCardId, setViewingCardId] = useState(null)
 
   // ── Add a new card ──────────────────────────────────────────────────────────
 
@@ -44,6 +48,43 @@ export default function Board() {
       }
     })
     setAddingToColumn(null)
+  }
+
+  // ── Update a card ───────────────────────────────────────────────────────────
+
+  const handleUpdateCard = (updatedCard) => {
+    setBoard((prev) => {
+      const oldCard = prev.cards[updatedCard.id]
+      if (!oldCard) return prev
+
+      let columns = prev.columns
+
+      // If the card moved columns, update both columns' cardIds arrays
+      if (oldCard.columnId !== updatedCard.columnId) {
+        const oldColumn = prev.columns[oldCard.columnId]
+        const newColumn = prev.columns[updatedCard.columnId]
+        columns = {
+          ...prev.columns,
+          [oldCard.columnId]: {
+            ...oldColumn,
+            cardIds: oldColumn.cardIds.filter((id) => id !== updatedCard.id),
+          },
+          [updatedCard.columnId]: {
+            ...newColumn,
+            cardIds: [...newColumn.cardIds, updatedCard.id],
+          },
+        }
+      }
+
+      return {
+        ...prev,
+        cards: {
+          ...prev.cards,
+          [updatedCard.id]: updatedCard,
+        },
+        columns,
+      }
+    })
   }
 
   // ── Delete a card ───────────────────────────────────────────────────────────
@@ -115,6 +156,7 @@ export default function Board() {
               cards={board.cards}
               onAddCard={setAddingToColumn}
               onDeleteCard={handleDeleteCard}
+              onViewCard={setViewingCardId}
             />
           )
         })}
@@ -126,6 +168,17 @@ export default function Board() {
           defaultColumnId={addingToColumn}
           onSave={handleAddCard}
           onClose={() => setAddingToColumn(null)}
+        />
+      )}
+
+      {/* Card detail popup */}
+      {viewingCardId && board.cards[viewingCardId] && (
+        <CardDetailModal
+          card={board.cards[viewingCardId]}
+          columns={board.columns}
+          columnOrder={board.columnOrder}
+          onSave={handleUpdateCard}
+          onClose={() => setViewingCardId(null)}
         />
       )}
 

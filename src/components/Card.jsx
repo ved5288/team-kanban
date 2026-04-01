@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 
 // ─── Priority badge styling ───────────────────────────────────────────────────
@@ -28,8 +27,9 @@ function timeAgo(isoString) {
  * Props:
  *  card      - the card data object { id, title, description, priority, assignee, createdAt }
  *  onDelete  - (cardId) => void   called when the user deletes the card
+ *  onView    - (cardId) => void   called when the user clicks the card title
  */
-export default function Card({ card, onDelete }) {
+export default function Card({ card, onDelete, onView }) {
   const { id, title, description, priority, assignee, createdAt } = card
 
   return (
@@ -37,14 +37,14 @@ export default function Card({ card, onDelete }) {
       className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm
                  hover:shadow-md hover:border-gray-300 transition-all cursor-default group"
     >
-      {/* Title — click to open the full card detail page */}
-      <Link
-        to={`/card/${id}`}
-        className="block text-sm font-semibold text-gray-800 leading-snug mb-2
+      {/* Title — click to open the card detail popup */}
+      <button
+        onClick={() => onView(id)}
+        className="block w-full text-left text-sm font-semibold text-gray-800 leading-snug mb-2
                    hover:text-indigo-600 transition-colors"
       >
         {title}
-      </Link>
+      </button>
 
       {/* Description (truncated) */}
       {description && (
