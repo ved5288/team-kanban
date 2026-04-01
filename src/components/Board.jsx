@@ -47,6 +47,9 @@ export default function Board() {
   // Which card's detail popup is open (null = closed, string = cardId)
   const [viewingCardId, setViewingCardId] = useState(null)
 
+  // Activity panel open/collapsed state
+  const [activityOpen, setActivityOpen] = useState(true)
+
   // Wrap handleMoveCard to log cross-column moves to the activity feed
   const handleMoveCardWithLog = (cardId, targetColumnId, targetIndex) => {
     const card = board.cards[cardId]
@@ -87,6 +90,7 @@ export default function Board() {
       <FilterBar
         activeFilters={activeFilters}
         onChange={setActiveFilters}
+        onOpenActivity={() => setActivityOpen(true)}
       />
 
       {/* Main content: columns + activity feed */}
@@ -126,6 +130,8 @@ export default function Board() {
           activities={activities}
           currentUserId={user?.id ?? ''}
           onReact={(activityId, emoji) => toggleReaction(activityId, emoji, user?.id ?? '')}
+          isOpen={activityOpen}
+          onToggle={() => setActivityOpen((p) => !p)}
         />
 
       </div>

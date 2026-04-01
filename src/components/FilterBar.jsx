@@ -62,7 +62,7 @@ function Chip({ label, onRemove }) {
  *  activeFilters - { priority: string[], assignees: string[], dateFilter: null|object }
  *  onChange      - (newFilters) => void  receives the full updated filters object
  */
-export default function FilterBar({ activeFilters, onChange }) {
+export default function FilterBar({ activeFilters, onChange, onOpenActivity }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const { priority, assignees, dateFilter } = activeFilters
   const activeCount = countActiveFilters(activeFilters)
@@ -124,6 +124,19 @@ export default function FilterBar({ activeFilters, onChange }) {
             )}
           </div>
         )}
+
+        {/* Activity tab */}
+        <button
+          onClick={onOpenActivity}
+          className="flex items-center gap-2 text-sm font-medium text-gray-600
+                     hover:text-indigo-600 transition-colors shrink-0"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Activity
+        </button>
 
         {/* Clear all — right-aligned */}
         {activeCount > 0 && (

@@ -172,44 +172,66 @@ function ActivityItem({ entry, currentUserId, onReact }) {
 
 // ─── ActivityFeed ─────────────────────────────────────────────────────────────
 
-export default function ActivityFeed({ activities, currentUserId, onReact }) {
+export default function ActivityFeed({ activities, currentUserId, onReact, isOpen, onToggle }) {
   const items = groupByDate(activities)
 
   return (
-    <div className="w-[20%] shrink-0 border-l border-gray-200 bg-white flex flex-col min-h-0">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 shrink-0">
-        <h3 className="text-sm font-semibold text-gray-800">Activity</h3>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {activities.length} event{activities.length !== 1 ? 's' : ''}
-        </p>
-      </div>
+    <div className="relative flex shrink-0 min-h-0">
 
-      {/* Scrollable feed */}
-      <div className="flex-1 overflow-y-auto">
-        {activities.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4 py-10">
-            <span className="text-3xl mb-2">📋</span>
-            <p className="text-sm text-gray-500 font-medium">No activity yet</p>
-            <p className="text-xs text-gray-400 mt-1">Move a card to see it here</p>
-          </div>
-        ) : (
-          <div>
-            {items.map((item, i) =>
-              item.type === 'separator' ? (
-                <DateSeparator key={`sep-${i}`} label={item.label} />
-              ) : (
-                <ActivityItem
-                  key={item.data.id}
-                  entry={item.data}
-                  currentUserId={currentUserId}
-                  onReact={onReact}
-                />
-              )
+      {/* Collapse / expand toggle — centred on the left border */}
+      <button
+        onClick={onToggle}
+        title={isOpen ? 'Collapse activity panel' : 'Expand activity panel'}
+        className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20
+                   w-5 h-10 bg-white border border-gray-300 rounded-full shadow-md
+                   flex items-center justify-center
+                   hover:bg-indigo-50 hover:border-indigo-400 transition-colors"
+      >
+        <svg
+          className="w-3 h-3 text-gray-500"
+          fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" strokeWidth={2.5}
+        >
+          <path
+            strokeLinecap="round" strokeLinejoin="round"
+            d={isOpen ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'}
+          />
+        </svg>
+      </button>
+
+      {/* Panel content — only rendered when open */}
+      {isOpen && (
+        <div className="w-[20vw] border-l border-gray-200 bg-white flex flex-col min-h-0 h-full overflow-hidden">
+
+          {/* Scrollable feed */}
+          <div className="flex-1 overflow-y-auto">
+            {activities.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center px-4 py-10">
+                <span className="text-3xl mb-2">📋</span>
+                <p className="text-sm text-gray-500 font-medium">No activity yet</p>
+                <p className="text-xs text-gray-400 mt-1">Move a card to see it here</p>
+              </div>
+            ) : (
+              <div>
+                {items.map((item, i) =>
+                  item.type === 'separator' ? (
+                    <DateSeparator key={`sep-${i}`} label={item.label} />
+                  ) : (
+                    <ActivityItem
+                      key={item.data.id}
+                      entry={item.data}
+                      currentUserId={currentUserId}
+                      onReact={onReact}
+                    />
+                  )
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+
+        </div>
+      )}
+
     </div>
   )
 }
