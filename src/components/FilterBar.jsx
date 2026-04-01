@@ -63,8 +63,9 @@ function Chip({ label, onRemove }) {
  *  onChange         - (newFilters) => void  receives the full updated filters object
  *  viewMode         - 'board' | 'table'
  *  onViewModeChange - (mode) => void
+ *  onToggleActivity - () => void
  */
-export default function FilterBar({ activeFilters, onChange, viewMode, onViewModeChange }) {
+export default function FilterBar({ activeFilters, onChange, viewMode, onViewModeChange, onToggleActivity }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const { priority, assignees, dateFilter } = activeFilters
   const activeCount = countActiveFilters(activeFilters)
@@ -127,7 +128,7 @@ export default function FilterBar({ activeFilters, onChange, viewMode, onViewMod
           </div>
         )}
 
-        {/* Right side: clear all + view toggle */}
+        {/* Right side: clear all + view toggle + activity */}
         <div className="ml-auto flex items-center gap-3">
           {activeCount > 0 && (
             <button
@@ -167,6 +168,19 @@ export default function FilterBar({ activeFilters, onChange, viewMode, onViewMod
               Table
             </button>
           </div>
+
+          {/* Activity tab */}
+          <button
+            onClick={onToggleActivity}
+            className="flex items-center gap-2 text-sm font-medium text-gray-600
+                       hover:text-indigo-600 transition-colors shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Activity
+          </button>
         </div>
       </div>
 

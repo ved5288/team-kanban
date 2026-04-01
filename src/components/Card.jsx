@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { getUserColor, getUserInitials, getUserName } from '../data/users'
 import { timeAgo } from '../utils/time'
 import { getDueDateStatus, DUE_DATE_STYLES, formatDueDate } from '../utils/dueDateUtils'
@@ -21,17 +21,27 @@ const PRIORITY_STYLES = {
  *  onView    - (cardId) => void   called when the user clicks the card title or edit button
  */
 export default function Card({ card, onView }) {
-  const { id, title, description, priority, assignee, createdAt, color, dueDate } = card
+  const { id, title, description, priority, assignee, createdAt, color, dueDate, parentCardId, childCardIds } = card
+  const hasParent = !!parentCardId
+  const childCount = (childCardIds ?? []).length
   const [isDragging, setIsDragging] = useState(false)
+  const wasDragged = useRef(false)
 
   const handleDragStart = (e) => {
     e.dataTransfer.setData('text/plain', id)
     e.dataTransfer.effectAllowed = 'move'
     setIsDragging(true)
+    wasDragged.current = true
   }
 
   const handleDragEnd = () => {
     setIsDragging(false)
+    requestAnimationFrame(() => { wasDragged.current = false })
+  }
+
+  const handleClick = () => {
+    if (wasDragged.current) return
+    onView(id)
   }
 
   return (
@@ -39,22 +49,19 @@ export default function Card({ card, onView }) {
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onClick={handleClick}
       className={`bg-white rounded-lg border border-gray-200 shadow-sm
-                 hover:shadow-md hover:border-gray-300 transition-all cursor-grab active:cursor-grabbing group overflow-hidden
+                 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer group overflow-hidden
                  ${isDragging ? 'opacity-40' : 'opacity-100'}`}
     >
       {/* Colour stripe */}
       {color && <div className={`h-1 w-full ${color}`} />}
 
       <div className="p-3">
-        {/* Title — click to open the card detail popup */}
-        <button
-          onClick={() => onView(id)}
-          className="block w-full text-left text-sm font-semibold text-gray-800 leading-snug mb-2
-                     hover:text-indigo-600 transition-colors"
-        >
+        {/* Title */}
+        <p className="text-sm font-semibold text-gray-800 leading-snug mb-2">
           {title}
-        </button>
+        </p>
 
         {/* Description (truncated) */}
         {description && (
@@ -76,6 +83,22 @@ export default function Card({ card, onView }) {
             </div>
           )
         })()}
+
+        {/* Parent/child link indicators */}
+        {(hasParent || childCount > 0) && (
+          <div className="flex items-center gap-1.5 mb-2">
+            {hasParent && (
+              <span className="inline-flex items-center gap-1 text-xs text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full font-medium">
+                ↑ Parent
+              </span>
+            )}
+            {childCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
+                ↓ {childCount} {childCount === 1 ? 'child' : 'children'}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Footer: priority + assignee + time + edit button */}
         <div className="flex items-center justify-between gap-2">
