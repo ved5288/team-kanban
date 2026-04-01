@@ -252,6 +252,81 @@ export function useBoard() {
     }
   }, [setBoard])
 
+  // ── Bulk operations ────────────────────────────────────────────────────────
+
+  /** Delete all cards in the given Set of card IDs */
+  const handleBulkDelete = useCallback((cardIds) => {
+    setBoard((prev) => {
+      const remaining = { ...prev.cards }
+      const updatedColumns = { ...prev.columns }
+
+      for (const cardId of cardIds) {
+        const card = remaining[cardId]
+        if (!card) continue
+        delete remaining[cardId]
+        const col = updatedColumns[card.columnId]
+        if (col) {
+          updatedColumns[card.columnId] = {
+            ...col,
+            cardIds: col.cardIds.filter((id) => id !== cardId),
+          }
+        }
+      }
+
+      return { ...prev, cards: remaining, columns: updatedColumns }
+    })
+  }, [setBoard])
+
+  /** Move all cards in the given Set to a target column */
+  const handleBulkMove = useCallback((cardIds, targetColumnId) => {
+    setBoard((prev) => {
+      const targetColumn = prev.columns[targetColumnId]
+      if (!targetColumn) return prev
+
+      const updatedCards = { ...prev.cards }
+      const updatedColumns = { ...prev.columns }
+      const toAppend = []
+
+      for (const cardId of cardIds) {
+        const card = updatedCards[cardId]
+        if (!card || card.columnId === targetColumnId) continue
+
+        // Remove from source column
+        const srcCol = updatedColumns[card.columnId]
+        if (srcCol) {
+          updatedColumns[card.columnId] = {
+            ...srcCol,
+            cardIds: srcCol.cardIds.filter((id) => id !== cardId),
+          }
+        }
+
+        updatedCards[cardId] = { ...card, columnId: targetColumnId }
+        toAppend.push(cardId)
+      }
+
+      if (toAppend.length === 0) return prev
+
+      updatedColumns[targetColumnId] = {
+        ...updatedColumns[targetColumnId],
+        cardIds: [...updatedColumns[targetColumnId].cardIds, ...toAppend],
+      }
+
+      return { ...prev, cards: updatedCards, columns: updatedColumns }
+    })
+  }, [setBoard])
+
+  /** Update a specific field (assignee | priority | dueDate) on all selected cards */
+  const handleBulkUpdate = useCallback((cardIds, field, value) => {
+    setBoard((prev) => {
+      const updatedCards = { ...prev.cards }
+      for (const cardId of cardIds) {
+        if (!updatedCards[cardId]) continue
+        updatedCards[cardId] = { ...updatedCards[cardId], [field]: value }
+      }
+      return { ...prev, cards: updatedCards }
+    })
+  }, [setBoard])
+
   return {
     board,
     setBoard,
@@ -262,5 +337,8 @@ export function useBoard() {
     addLane,
     handleDeleteLane,
     resetBoard,
+    handleBulkDelete,
+    handleBulkMove,
+    handleBulkUpdate,
   }
 }
