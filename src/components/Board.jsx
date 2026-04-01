@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { INITIAL_BOARD } from '../data/mockData'
 import { countActiveFilters } from '../utils/filterUtils'
 import { useBoard } from '../hooks/useBoard'
@@ -50,11 +50,13 @@ export default function Board() {
   const [viewingCardId, setViewingCardId] = useState(null)
 
   // Flat ordered list of all visible card IDs (for shift-range selection)
-  const allVisibleIds = board.columnOrder.flatMap((colId) => {
-    const col = board.columns[colId]
-    if (!col) return []
-    return col.cardIds.filter((id) => id in filteredCards)
-  })
+  const allVisibleIds = useMemo(() =>
+    board.columnOrder.flatMap((colId) => {
+      const col = board.columns[colId]
+      if (!col) return []
+      return col.cardIds.filter((id) => id in filteredCards)
+    }),
+  [board.columnOrder, board.columns, filteredCards])
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -177,7 +179,7 @@ export default function Board() {
           }}
           onUpdate={(field, value) => {
             handleBulkUpdate(bulk.selectedIds, field, value)
-            bulk.deselectAll()
+            bulk.exitSelectMode()
           }}
         />
       )}
