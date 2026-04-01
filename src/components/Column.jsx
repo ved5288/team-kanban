@@ -43,17 +43,20 @@ function getDropIndex(listEl, mouseY) {
  * Renders a single Kanban column with drag-and-drop support.
  *
  * Props:
- *  column        - { id, title, cardIds }
- *  cards         - full cards map (id -> card object) from Board state
- *  onAddCard     - (columnId) => void   opens the AddCard modal for this column
- *  onViewCard    - (cardId)   => void   opens the card detail popup
- *  onDeleteCard  - (cardId)   => void   deletes a card
- *  onMoveCard    - (cardId, targetColumnId, targetIndex) => void   moves a card
- *  onDeleteLane  - (columnId) => void   deletes the lane (undefined for default lanes)
+ *  column          - { id, title, cardIds }
+ *  cards           - full cards map (id → card object) from Board state
+ *  filteredCardIds - array of card IDs that passed active filters (subset of column.cardIds)
+ *  isFiltering     - boolean: true when any filter is active
+ *  onAddCard       - (columnId) => void   opens the AddCard modal for this column
+ *  onViewCard      - (cardId)   => void   opens the card detail popup
+ *  onDeleteCard    - (cardId)   => void   deletes a card
+ *  onMoveCard      - (cardId, targetColumnId, targetIndex) => void   moves a card
+ *  onDeleteLane    - (columnId) => void   deletes the lane (undefined for default lanes)
  */
-export default function Column({ column, cards, onAddCard, onViewCard, onDeleteCard, onMoveCard, onDeleteLane }) {
+export default function Column({ column, cards, filteredCardIds, isFiltering, onAddCard, onViewCard, onDeleteCard, onMoveCard, onDeleteLane }) {
   const { id, title, cardIds } = column
-  const columnCards = cardIds.map((cid) => cards[cid]).filter(Boolean)
+  // Use filtered IDs when provided, fall back to all IDs for backward compatibility
+  const columnCards = (filteredCardIds ?? cardIds).map((cid) => cards[cid]).filter(Boolean)
   const accentColor = getColumnColor(id)
 
   // Track where the drop indicator should appear: index in the card list
@@ -138,7 +141,7 @@ export default function Column({ column, cards, onAddCard, onViewCard, onDeleteC
           <h2 className="text-sm font-bold text-white">{title}</h2>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full font-medium">
-              {columnCards.length}
+              {isFiltering ? `${columnCards.length}/${cardIds.length}` : columnCards.length}
             </span>
             {onDeleteLane && (
               <button
@@ -162,9 +165,18 @@ export default function Column({ column, cards, onAddCard, onViewCard, onDeleteC
         onDrop={handleDrop}
       >
         {columnCards.length === 0 && effectiveDropIndex === null ? (
-          <div className="flex items-center justify-center h-16 text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
-            No cards yet
-          </div>
+          isFiltering ? (
+            <div className="flex flex-col items-center justify-center h-16 gap-1
+                            text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg
+                            bg-gray-50/50">
+              <span className="text-base">🔍</span>
+              <span>No cards match the current filters</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-16 text-xs text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
+              No cards yet
+            </div>
+          )
         ) : columnCards.length === 0 && effectiveDropIndex !== null ? (
           <div className="flex items-center justify-center h-16 text-xs text-indigo-500 border-2 border-dashed border-indigo-300 rounded-lg bg-indigo-50">
             Drop here

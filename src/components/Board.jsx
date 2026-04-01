@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { INITIAL_BOARD } from '../data/mockData'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { applyFilters, countActiveFilters } from '../utils/filterUtils'
 import Header from './Header'
 import Column from './Column'
 import AddCardModal from './AddCardModal'
 import CardDetailModal from './CardDetailModal'
+import FilterBar from './FilterBar'
 
 /**
  * The main board view.
@@ -26,6 +28,19 @@ export default function Board() {
 
   // Which card's detail popup is open (null = closed, string = cardId)
   const [viewingCardId, setViewingCardId] = useState(null)
+
+  // Active filter state — view-only, does not mutate board data
+  const [activeFilters, setActiveFilters] = useState({
+    priority:   [],
+    assignees:  [],
+    dateFilter: null,
+  })
+
+  // Derived: cards that pass all active filters
+  const filteredCards = useMemo(
+    () => applyFilters(board.cards, activeFilters),
+    [board.cards, activeFilters]
+  )
 
   // "Add lane" inline input state
   const [isAddingLane, setIsAddingLane] = useState(false)
@@ -276,17 +291,26 @@ export default function Board() {
         </button>
       </div>
 
+      {/* Filter bar */}
+      <FilterBar
+        activeFilters={activeFilters}
+        onChange={setActiveFilters}
+      />
+
       {/* Columns */}
       <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
         {board.columnOrder.map((colId) => {
           const column = board.columns[colId]
           if (!column) return null
+          const visibleCardIds = column.cardIds.filter((id) => id in filteredCards)
           const isDefault = colId in INITIAL_BOARD.columns
           return (
             <Column
               key={colId}
               column={column}
               cards={board.cards}
+              filteredCardIds={visibleCardIds}
+              isFiltering={countActiveFilters(activeFilters) > 0}
               onAddCard={setAddingToColumn}
               onViewCard={setViewingCardId}
               onDeleteCard={handleDeleteCard}
