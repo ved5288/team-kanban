@@ -1,13 +1,42 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Returns true if `rootId` is a descendant of `candidateId` in the card tree.
+ * Used to prevent circular parent-child links.
+ */
+function isDescendant(candidateId, rootId, cards) {
+  const children = cards[candidateId]?.childCardIds ?? []
+  return children.some(
+    (childId) => childId === rootId || isDescendant(childId, rootId, cards)
+  )
+}
+
+// ── Remove icon (SVG, consistent with CardDetailModal) ────────────────────────
+
+function RemoveIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+      <path
+        fillRule="evenodd"
+        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+}
+
+// ── CardLinks ─────────────────────────────────────────────────────────────────
 
 /**
  * Displays and manages parent/child card links for a given card.
  *
  * Props:
- *  card        - the current card object
- *  board       - full board state
- *  setBoard    - board state setter
- *  onViewCard  - (cardId) => void  — opens another card's detail modal
+ *  card        - the current card object (required)
+ *  board       - full board state (required)
+ *  setBoard    - board state setter (required)
+ *  onViewCard  - (cardId) => void  — opens another card's detail modal (required)
  */
 export default function CardLinks({ card, board, setBoard, onViewCard }) {
   const [showAddParent, setShowAddParent] = useState(false)
@@ -15,24 +44,36 @@ export default function CardLinks({ card, board, setBoard, onViewCard }) {
   const [searchQuery, setSearchQuery] = useState('')
 
   const parentCard = card.parentCardId ? board.cards[card.parentCardId] : null
-  const childCards = (card.childCardIds ?? []).map((id) => board.cards[id]).filter(Boolean)
+  const childCards = useMemo(
+    () => (card.childCardIds ?? []).map((id) => board.cards[id]).filter(Boolean),
+    [card.childCardIds, board.cards]
+  )
 
   // Cards eligible to become the parent of this card
-  const parentOptions = Object.values(board.cards).filter((c) => {
-    if (c.id === card.id) return false
-    if (c.id === card.parentCardId) return false
-    if ((card.childCardIds ?? []).includes(c.id)) return false // already a child
-    return true
-  })
+  const parentOptions = useMemo(
+    () =>
+      Object.values(board.cards).filter((c) => {
+        if (c.id === card.id) return false
+        if (c.id === card.parentCardId) return false
+        if ((card.childCardIds ?? []).includes(c.id)) return false // already a direct child
+        if (isDescendant(c.id, card.id, board.cards)) return false // deeper descendant — would create cycle
+        return true
+      }),
+    [board.cards, card.id, card.parentCardId, card.childCardIds]
+  )
 
   // Cards eligible to become children of this card
-  const childOptions = Object.values(board.cards).filter((c) => {
-    if (c.id === card.id) return false
-    if ((card.childCardIds ?? []).includes(c.id)) return false // already a child
-    if (c.id === card.parentCardId) return false // is the parent
-    if (c.parentCardId) return false // already has a parent elsewhere
-    return true
-  })
+  const childOptions = useMemo(
+    () =>
+      Object.values(board.cards).filter((c) => {
+        if (c.id === card.id) return false
+        if ((card.childCardIds ?? []).includes(c.id)) return false // already a child
+        if (c.id === card.parentCardId) return false // is the parent
+        if (c.parentCardId) return false // already has a parent elsewhere
+        return true
+      }),
+    [board.cards, card.id, card.parentCardId, card.childCardIds]
+  )
 
   const filteredParentOptions = parentOptions.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -46,20 +87,30 @@ export default function CardLinks({ card, board, setBoard, onViewCard }) {
 
   const handleSetParent = (parentId) => {
     setBoard((prev) => {
-      const parent = prev.cards[parentId]
+      const newParent = prev.cards[parentId]
       const child = prev.cards[card.id]
-      if (!parent || !child) return prev
-      return {
-        ...prev,
-        cards: {
-          ...prev.cards,
-          [parentId]: {
-            ...parent,
-            childCardIds: [...(parent.childCardIds ?? []), card.id],
-          },
-          [card.id]: { ...child, parentCardId: parentId },
+      if (!newParent || !child) return prev
+
+      const patches = {
+        // Add this card to the new parent's children
+        [parentId]: {
+          ...newParent,
+          childCardIds: [...(newParent.childCardIds ?? []), card.id],
         },
+        // Point this card at the new parent
+        [card.id]: { ...child, parentCardId: parentId },
       }
+
+      // Clean up the old parent if one existed
+      const oldParentId = child.parentCardId
+      if (oldParentId && oldParentId !== parentId && prev.cards[oldParentId]) {
+        patches[oldParentId] = {
+          ...prev.cards[oldParentId],
+          childCardIds: (prev.cards[oldParentId].childCardIds ?? []).filter((id) => id !== card.id),
+        }
+      }
+
+      return { ...prev, cards: { ...prev.cards, ...patches } }
     })
     setShowAddParent(false)
     setSearchQuery('')
@@ -143,7 +194,7 @@ export default function CardLinks({ card, board, setBoard, onViewCard }) {
         {parentCard ? (
           <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
             <button
-              onClick={() => onViewCard(parentCard.id)}
+              onClick={() => onViewCard?.(parentCard.id)}
               className="text-sm text-indigo-700 font-medium hover:underline truncate text-left flex-1"
             >
               {parentCard.title}
@@ -151,9 +202,9 @@ export default function CardLinks({ card, board, setBoard, onViewCard }) {
             <button
               onClick={handleRemoveParent}
               title="Remove parent link"
-              className="text-gray-300 hover:text-red-500 ml-2 shrink-0 transition-colors text-lg leading-none"
+              className="text-gray-300 hover:text-red-500 ml-2 shrink-0 transition-colors"
             >
-              ×
+              <RemoveIcon />
             </button>
           </div>
         ) : !showAddParent ? (
@@ -216,7 +267,7 @@ export default function CardLinks({ card, board, setBoard, onViewCard }) {
             {childCards.map((c) => (
               <div key={c.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
                 <button
-                  onClick={() => onViewCard(c.id)}
+                  onClick={() => onViewCard?.(c.id)}
                   className="text-sm text-gray-700 hover:text-indigo-600 hover:underline truncate text-left flex-1"
                 >
                   {c.title}
@@ -224,9 +275,9 @@ export default function CardLinks({ card, board, setBoard, onViewCard }) {
                 <button
                   onClick={() => handleRemoveChild(c.id)}
                   title="Remove child link"
-                  className="text-gray-300 hover:text-red-500 ml-2 shrink-0 transition-colors text-lg leading-none"
+                  className="text-gray-300 hover:text-red-500 ml-2 shrink-0 transition-colors"
                 >
-                  ×
+                  <RemoveIcon />
                 </button>
               </div>
             ))}

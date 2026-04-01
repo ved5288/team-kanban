@@ -80,21 +80,22 @@ export function useBoard() {
       const { [cardId]: _removed, ...remainingCards } = prev.cards
 
       // Clean up parent/child links referencing the deleted card
+      const linkPatches = {}
       if (card.parentCardId && remainingCards[card.parentCardId]) {
-        remainingCards[card.parentCardId] = {
+        linkPatches[card.parentCardId] = {
           ...remainingCards[card.parentCardId],
           childCardIds: (remainingCards[card.parentCardId].childCardIds ?? []).filter((id) => id !== cardId),
         }
       }
       for (const childId of (card.childCardIds ?? [])) {
         if (remainingCards[childId]) {
-          remainingCards[childId] = { ...remainingCards[childId], parentCardId: null }
+          linkPatches[childId] = { ...remainingCards[childId], parentCardId: null }
         }
       }
 
       return {
         ...prev,
-        cards: remainingCards,
+        cards: { ...remainingCards, ...linkPatches },
         columns: {
           ...prev.columns,
           [card.columnId]: updatedColumn,
