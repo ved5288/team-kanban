@@ -6,17 +6,15 @@
  * All demo accounts share password: pass123
  */
 export const USERS = {
-  admin:       { password: 'admin123', name: 'Vedant (Admin)', id: 'admin'       },
-  shritilekha: { password: 'pass123',  name: 'Shritilekha',   id: 'shritilekha' },
-  malvika:     { password: 'pass123',  name: 'Malvika',        id: 'malvika'     },
-  vaidehie:    { password: 'pass123',  name: 'Vaidehie',       id: 'vaidehie'    },
-  yash:        { password: 'pass123',  name: 'Yash',           id: 'yash'        },
-  riya:        { password: 'pass123',  name: 'Riya',           id: 'riya'        },
-  jitesh:      { password: 'pass123',  name: 'Jitesh',         id: 'jitesh'      },
-  nithish:     { password: 'pass123',  name: 'Nithish',        id: 'nithish'     },
-  bhavya:      { password: 'pass123',  name: 'Bhavya',         id: 'bhavya'      },
-  vedant:      { password: 'pass123',  name: 'Vedant',         id: 'vedant'      },
-  rahul:       { password: 'pass123',  name: 'Rahul',          id: 'rahul'       },
+  admin:    { password: 'admin123', name: 'Vedant (Admin)', id: 'admin'    },
+  malvika:  { password: 'pass123',  name: 'Malvika',        id: 'malvika'  },
+  vaidehie: { password: 'pass123',  name: 'Vaidehie',       id: 'vaidehie' },
+  yash:     { password: 'pass123',  name: 'Yash',           id: 'yash'     },
+  riya:     { password: 'pass123',  name: 'Riya',           id: 'riya'     },
+  jitesh:   { password: 'pass123',  name: 'Jitesh',         id: 'jitesh'   },
+  nithish:  { password: 'pass123',  name: 'Nithish',        id: 'nithish'  },
+  bhavya:   { password: 'pass123',  name: 'Bhavya',         id: 'bhavya'   },
+  vedant:   { password: 'pass123',  name: 'Vedant',         id: 'vedant'   },
 }
 
 /**
