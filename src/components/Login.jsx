@@ -3,7 +3,7 @@ import { USERS } from '../data/users'
 import { useAuth } from '../App'
 
 // Demo accounts shown as quick-fill chips at the bottom of the login form
-const DEMO_ACCOUNTS = ['shritilekha', 'malvika', 'vaidehie', 'yash', 'riya', 'jitesh', 'nithish', 'bhavya', 'vedant', 'rahul']
+const DEMO_ACCOUNTS = ['malvika', 'vaidehie', 'yash', 'riya', 'jitesh', 'nithish', 'bhavya', 'vedant']
 
 export default function Login() {
   const { login } = useAuth()
